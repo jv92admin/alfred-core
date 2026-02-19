@@ -65,7 +65,7 @@ See `docs/architecture/` for detailed documentation:
 ## Development
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/alfred-core.git
+git clone https://github.com/jv92admin/alfred-core.git
 cd alfred-core
 python -m venv .venv
 .venv\Scripts\activate  # Windows
