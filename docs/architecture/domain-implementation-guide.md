@@ -53,13 +53,13 @@ def _register():
 _register()
 ```
 
-This mirrors the kitchen pattern at [alfred_kitchen/__init__.py](src/alfred_kitchen/__init__.py). Importing `alfred_fpl` anywhere in your app registers the domain.
+This mirrors the kitchen pattern. Importing `alfred_fpl` anywhere in your app registers the domain.
 
 ---
 
 ## 3. Entity Definitions
 
-Define your entities using `EntityDefinition` ([base.py:26](src/alfred/domain/base.py#L26)):
+Define your entities using `EntityDefinition` (see `alfred.domain.base.EntityDefinition`):
 
 ```python
 from alfred.domain.base import EntityDefinition
@@ -160,7 +160,7 @@ Default is no-op (returns `None`). Kitchen doesn't need it because all Kitchen e
 
 ## 4. Subdomain Definitions
 
-Group tables into logical subdomains using `SubdomainDefinition` ([base.py:54](src/alfred/domain/base.py#L54)):
+Group tables into logical subdomains using `SubdomainDefinition` (see `alfred.domain.base.SubdomainDefinition`):
 
 ```python
 from alfred.domain.base import SubdomainDefinition
@@ -407,7 +407,7 @@ Several DomainConfig methods have implicit contracts that aren't obvious from th
 
 ## 6. Database Adapter
 
-Implement the `DatabaseAdapter` protocol ([db/adapter.py:23](src/alfred/db/adapter.py#L23)):
+Implement the `DatabaseAdapter` protocol (see `alfred.db.adapter.DatabaseAdapter`):
 
 ```python
 # src/alfred_fpl/db/client.py
@@ -475,7 +475,7 @@ FPL-specific variables (Supabase URL, Supabase key) come from `fpl/.env`. Shared
 
 ## 7. CRUD Middleware (Optional)
 
-If your domain needs query intelligence beyond raw CRUD, implement `CRUDMiddleware` ([base.py:97](src/alfred/domain/base.py#L97)):
+If your domain needs query intelligence beyond raw CRUD, implement `CRUDMiddleware` (see `alfred.domain.base.CRUDMiddleware`):
 
 ```python
 from alfred.domain.base import CRUDMiddleware, ReadPreprocessResult
