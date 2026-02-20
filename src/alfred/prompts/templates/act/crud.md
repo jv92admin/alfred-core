@@ -4,7 +4,7 @@
 
 | Tool | Purpose | Params |
 |------|---------|--------|
-| `db_read` | Fetch rows | `table`, `filters`, `or_filters`, `columns`, `limit` |
+| `db_read` | Fetch rows | `table`, `filters`, `or_filters`, `columns`, `limit`, `order_by`, `order_dir` |
 | `db_create` | Insert row(s) | `table`, `data` (dict or array of dicts) |
 | `db_update` | Modify rows | `table`, `filters`, `data` (dict, applied to ALL matches) |
 | `db_delete` | Remove rows | `table`, `filters` |
@@ -29,6 +29,17 @@ Each filter: `{"field": "...", "op": "...", "value": "..."}`
 | `contains` | Array contains | `{"field": "occasions", "op": "contains", "value": ["weeknight"]}` |
 
 **Note:** Use simple refs like `item_1`, `item_5`. System translates to UUIDs automatically.
+
+---
+
+## Sorting (db_read only)
+
+| Param | Type | Default | Example |
+|-------|------|---------|---------|
+| `order_by` | column name | none (DB order) | `"order_by": "total_points"` |
+| `order_dir` | `"asc"` or `"desc"` | `"desc"` | `"order_dir": "asc"` |
+
+When `order_by` is set, results are sorted by that column. Default direction is **descending** (highest first) — omit `order_dir` for "top N" queries.
 
 ---
 

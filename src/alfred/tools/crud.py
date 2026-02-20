@@ -62,7 +62,7 @@ class DbReadParams(BaseModel):
     columns: list[str] | None = None  # None = all columns
     limit: int | None = None
     order_by: str | None = None
-    order_dir: Literal["asc", "desc"] = "asc"
+    order_dir: Literal["asc", "desc"] = "desc"
 
 
 class DbCreateParams(BaseModel):
