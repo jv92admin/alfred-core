@@ -461,7 +461,7 @@ def _try_reroute_pending_read(
 
 
 async def execute_crud(
-    tool: Literal["db_read", "db_create", "db_update", "db_delete"],
+    tool: str,
     params: dict[str, Any],
     user_id: str,
     registry: Any | None = None,

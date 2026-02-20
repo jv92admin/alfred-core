@@ -41,11 +41,11 @@ Think decomposes any request into a chain of steps. Each step follows one of fou
 | Pattern | What it does | Tools | Side effects |
 |---------|-------------|-------|-------------|
 | **Read** | Pull data from external sources | `db_read` | None |
-| **Analyze** | Reason over data already in context | None (text-only) | None |
-| **Generate** | Produce structured artifacts | None (text-only) | None |
+| **Analyze** | Reason over data already in context | Domain-configurable (default: none) | None |
+| **Generate** | Produce structured artifacts | Domain-configurable (default: none) | None |
 | **Write** | Push data to external destinations | `db_create`, `db_update`, `db_delete` | **Yes** |
 
-Act dispatches each step according to its pattern — loading pattern-specific tools, prompts, and context. Reply then synthesizes the full reasoning chain into a user-facing response. Today the built-in tools are Supabase CRUD. The pattern abstraction means new data sources and destinations plug in without changing core.
+Act dispatches each step according to its pattern — loading pattern-specific tools, prompts, and context. Reply then synthesizes the full reasoning chain into a user-facing response. The built-in tools are Supabase CRUD. Domains can register additional tools via `DomainConfig.get_custom_tools()` (e.g., sandboxed Python execution for analysis). The pattern abstraction means new data sources, destinations, and computation tools plug in without changing core.
 
 ---
 

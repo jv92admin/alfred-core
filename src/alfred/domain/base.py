@@ -94,6 +94,50 @@ class ReadPreprocessResult:
     short_circuit_empty: bool = False
 
 
+@dataclass
+class ToolDefinition:
+    """
+    A domain-provided tool available during Act steps.
+
+    Domains register custom tools alongside built-in CRUD via
+    DomainConfig.get_custom_tools(). Core dispatches tool calls
+    by name — the domain owns the handler implementation.
+
+    Attributes:
+        name: Tool name the LLM emits in ActDecision.tool (e.g., "run_python")
+        description: One-line description for the LLM decision prompt
+        params_schema: Human-readable param docs for the LLM prompt
+        handler: Async function (params: dict, user_id: str, context: ToolContext) -> Any
+    """
+
+    name: str
+    description: str
+    params_schema: str
+    handler: Callable  # async (params: dict, user_id: str, context: ToolContext) -> Any
+
+
+@dataclass
+class ToolContext:
+    """
+    Context passed to custom tool handlers during execution.
+
+    Provides access to session state without coupling domains to
+    core internals. The handler can use this to look up DataFrames
+    from prior steps, translate refs, or inspect state.
+
+    Attributes:
+        registry: SessionIdRegistry instance (ref ↔ UUID translation)
+        step_results: Results from prior steps in this turn
+        current_step_results: Tool results from current step so far
+        state: Full AlfredState dict (read-only by convention)
+    """
+
+    registry: Any  # SessionIdRegistry
+    step_results: list
+    current_step_results: list
+    state: dict  # AlfredState — mutable dict, treat as read-only
+
+
 class CRUDMiddleware:
     """
     Base class for domain-specific CRUD middleware.
@@ -434,6 +478,43 @@ class DomainConfig(ABC):
             Number of turns. Default: 2.
         """
         return 2
+
+    # =========================================================================
+    # Act Prompt Configuration
+    # =========================================================================
+
+    def get_tool_enabled_step_types(self) -> set[str]:
+        """
+        Step types that have CRUD tool access in Act prompts.
+
+        Default: {"read", "write"} — only read/write steps can make db calls.
+        Override to include "analyze" or "generate" if your domain needs
+        mid-step data fetching (e.g., FPL pulling extra stats during analysis).
+
+        Returns:
+            Set of step type strings. Valid values: "read", "write", "analyze", "generate".
+        """
+        return {"read", "write"}
+
+    def get_custom_tools(self) -> dict[str, "ToolDefinition"]:
+        """
+        Domain-specific tools available alongside built-in CRUD.
+
+        Tools registered here are injected into Act prompts (when tools are
+        enabled for the step type) and dispatched by act_node's tool_call
+        handler. CRUD tools (db_read, db_create, db_update, db_delete) are
+        always available when tools are enabled — this method adds additional
+        tools on top.
+
+        Each tool's handler receives (params, user_id, ToolContext) and returns
+        a JSON-serializable result dict. For soft failures, return an error dict
+        (LLM retries within MAX_TOOL_CALLS_PER_STEP=3). For hard failures,
+        raise an exception (→ BlockedAction, step terminates).
+
+        Returns:
+            Dict mapping tool name to ToolDefinition. Default: {} (CRUD only).
+        """
+        return {}
 
     # =========================================================================
     # CRUD Configuration

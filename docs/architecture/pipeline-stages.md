@@ -186,8 +186,8 @@ class ThinkStep(BaseModel):
 | Pattern | Purpose | Complexity | Why |
 |---------|---------|-----------|-----|
 | `read` | Pull data from external sources (`db_read`) | low | Query construction is mechanical |
-| `analyze` | Reason over data already in context (no CRUD) | medium | Reasoning quality matters |
-| `generate` | Produce structured artifacts (no CRUD) | high | Structure adherence + creative quality |
+| `analyze` | Reason over data already in context (tools: domain-configurable) | medium | Reasoning quality matters |
+| `generate` | Produce structured artifacts (tools: domain-configurable) | high | Structure adherence + creative quality |
 | `write` | Push data to destinations (`db_create`/`db_update`/`db_delete`) | low | Execution is mechanical |
 
 Complexity tiers map to model selection via `llm/model_router.py` — low uses a fast model, high uses the most capable. These tiers are tunable; the pattern abstraction means a domain or future skill system could override per-pattern model selection without changing the dispatch logic.
@@ -233,8 +233,8 @@ Act loads different tools, prompts, and context based on the step's `step_type`:
 |---------|----------------|---------------|----------------|--------|
 | `read` | `db_read` | `base.md` + `crud.md` + `read.md` | Schema, prior results | Tool output (rows) |
 | `write` | `db_create`, `db_update`, `db_delete` | `base.md` + `crud.md` + `write.md` | Schema, artifacts, batch manifest | Tool output (confirmation) |
-| `analyze` | None (text-only) | `base.md` + `analyze.md` | Prior step results, profile, guidance | LLM reasoning |
-| `generate` | None (text-only) | `base.md` + `generate.md` | Profile, guidance, prior data | LLM structured content |
+| `analyze` | Domain-configurable (default: none) | `base.md` + [`crud.md` +] `analyze.md` | Prior step results, profile, guidance | LLM reasoning [+ tool output] |
+| `generate` | Domain-configurable (default: none) | `base.md` + [`crud.md` +] `generate.md` | Profile, guidance, prior data | LLM structured content [+ tool output] |
 
 The dispatch happens in `_get_system_prompt(step_type)` at [act.py:338](src/alfred/graph/nodes/act.py#L338) and in `_build_step_type_sections()` at [injection.py:323](src/alfred/prompts/injection.py#L323). When a domain provides full replacement prompts via `get_act_prompt_content(step_type)`, the template layering is bypassed entirely. See [prompt-assembly.md](prompt-assembly.md) for details.
 
@@ -255,7 +255,7 @@ The LLM's decision model. 8 action types:
 
 | Action | Purpose | What Act Does |
 |--------|---------|---------------|
-| `tool_call` | Execute a CRUD operation | Calls `execute_crud()`, appends to `current_step_tool_results`, loops back |
+| `tool_call` | Execute a tool (CRUD or domain-provided) | Calls `execute_crud()` for built-in CRUD or domain handler for custom tools, appends to `current_step_tool_results`, loops back |
 | `step_complete` | Step is done | Caches result in `step_results`, increments `current_step_index`, clears tool results |
 | `request_schema` | Need table schema | Fetches schema, loops back (max 2 per step) |
 | `retrieve_step` | Need older step data | Injects data into `current_step_tool_results`, loops back |

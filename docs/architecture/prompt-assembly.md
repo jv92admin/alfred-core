@@ -135,8 +135,9 @@ The final prompt is joined with `\n\n` separators. Sections are ordered for opti
 **Artifacts** (section 13) — Full JSON dumps of generated `gen_*` content. Write steps use this to know what to save; analyze steps use it to reason about generated content.
 
 **Decision prompt** (section 15) — Step-type-specific output instructions:
-- analyze/generate: `step_complete` only (no DB calls allowed)
-- read/write: `tool_call` or `step_complete`
+- analyze/generate without tools: `step_complete` only
+- analyze/generate with tools (domain-configurable): `tool_call` or `step_complete`
+- read/write: `tool_call` or `step_complete` (includes domain-provided tools if registered)
 
 Built by `_build_decision_section()` at [injection.py:408](src/alfred/prompts/injection.py#L408).
 

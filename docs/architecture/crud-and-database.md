@@ -47,6 +47,8 @@ Act Node receives: [{id: "recipe_1", name: "Butter Chicken", ...}]
 
 All tool parameters are Pydantic models. The LLM outputs JSON matching these shapes, and the Act node validates them before calling `execute_crud()`.
 
+Domains can register additional tools beyond CRUD via `DomainConfig.get_custom_tools()`. Custom tools are dispatched by Act alongside built-in CRUD — core handles routing by tool name, the domain owns the handler. See [domain-implementation-guide.md](domain-implementation-guide.md) for details.
+
 ### FilterClause (`tools/crud.py:38`)
 
 A single filter condition. Filters combine with AND by default.

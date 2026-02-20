@@ -4,7 +4,7 @@
 
 Create new content: domain-specific items, plans, suggestions, ideas.
 
-**NO database calls.** You create content that may be saved in a later step.
+You create content that may be saved in a later step. If tools are available (see below), you may use them to fetch additional data or render outputs.
 
 ---
 
@@ -109,7 +109,7 @@ The "Role for This Step" section above contains detailed guidance for generating
 
 ## What NOT to do
 
-- Make `db_read`, `db_create`, `db_update`, or `db_delete` calls
+- Make tool calls unless tools are explicitly available in this prompt
 - Generate content that ignores user preferences
 - Use placeholder text ("Step 1: Do something")
 - Generate content without required structure

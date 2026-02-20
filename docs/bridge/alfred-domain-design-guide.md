@@ -321,13 +321,12 @@ shines. FPL's most valuable conversations will be analysis: "compare these
 midfielders", "is my defense good enough?", "which transfers give the best value?"
 The persona and semantic notes you provide directly shape analysis quality.
 
-**Future: ANALYZE with tool calling.** Today ANALYZE is pure LLM reasoning. For
-domains with heavy data (thousands of rows, statistical computations), ANALYZE may
-gain the ability to execute code (e.g., a sandboxed Python snippet via pandas) to
-process data that exceeds what LLM reasoning alone can handle. This is not available
-at MVP but the design should not prevent it — think of ANALYZE as "interpret data"
-rather than "LLM-only reasoning." When designing your domain, note which analysis
-patterns would benefit from computation vs. which are pure reasoning.
+**ANALYZE with tool calling.** By default, ANALYZE is pure LLM reasoning (no database
+calls). Domains that need mid-analysis data fetching can override
+`get_tool_enabled_step_types()` to include `"analyze"` — this gives ANALYZE steps
+full CRUD tool access (schema, db_read, etc.). When designing your domain, note which
+analysis patterns would benefit from additional data fetching vs. which are pure reasoning.
+The same applies to GENERATE steps.
 
 **Important naming note:** ANALYZE is a *step type* (what kind of work a step does).
 Don't confuse it with subdomain names. If you have a subdomain called "analysis" and

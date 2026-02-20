@@ -299,6 +299,31 @@ class DomainDomainConfig(DomainConfig):  # TODO: rename (e.g., FitnessConfig)
     # def get_entity_recency_window(self) -> int:
     #     return 1  # Default: 2
 
+    # CONTRACT: Step types default to {"read", "write"} for tool access.
+    #   Override to include "analyze" if your domain needs mid-analysis
+    #   data fetching (e.g., pulling extra stats during a comparison).
+    #   Override to include "generate" if generation needs live data.
+    #
+    # def get_tool_enabled_step_types(self) -> set[str]:
+    #     return {"read", "write", "analyze"}
+
+    # Domain-specific tools (available alongside built-in CRUD).
+    #   Register tools that your domain needs beyond database operations.
+    #   Each tool needs: name, description, param docs, async handler.
+    #   get_tool_enabled_step_types() controls WHEN tools are available;
+    #   get_custom_tools() controls WHICH additional tools appear.
+    #
+    # def get_custom_tools(self) -> dict[str, ToolDefinition]:
+    #     from alfred.domain.base import ToolDefinition
+    #     return {
+    #         "compute_stats": ToolDefinition(
+    #             name="compute_stats",
+    #             description="Run statistical computation on data",
+    #             params_schema="`datasets` (list of step refs), `operation` (avg|rank|trend)",
+    #             handler=self._compute_stats,
+    #         ),
+    #     }
+
 
 # Singleton — imported by __init__.py for registration
 DOMAIN_CONFIG = DomainDomainConfig()  # TODO: rename

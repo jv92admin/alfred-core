@@ -587,6 +587,49 @@ def get_fk_field_aliases(self) -> dict[str, str]:
     return {"parent_recipe_id": "recipe_id"}  # Kitchen example
 ```
 
+### Tool-Enabled Step Types
+
+Controls which step types get CRUD tool access (schema, db_read, db_create, etc.) in Act prompts:
+
+```python
+def get_tool_enabled_step_types(self) -> set[str]:
+    return {"read", "write", "analyze"}  # Default: {"read", "write"}
+```
+
+Default: `{"read", "write"}` — only read/write steps can make database calls. Override to include `"analyze"` if your domain needs mid-analysis data fetching (e.g., pulling additional stats during a comparison), or `"generate"` if content generation needs live data.
+
+When a step type is tool-enabled, its Act prompt includes `crud.md` (tool reference), database schema, current step tool results, and the full tool_call + step_complete decision template. The `step_complete` handler is unchanged — for analyze steps, `decision.data` (the LLM's analysis output) flows downstream regardless of whether tool calls happened during the step.
+
+### Custom Tools
+
+Register domain-specific tools alongside built-in CRUD via `get_custom_tools()`. Custom tools are dispatched by Act's tool_call handler — core routes by name, the domain owns the handler.
+
+```python
+from alfred.domain.base import ToolDefinition, ToolContext
+
+def get_custom_tools(self) -> dict[str, ToolDefinition]:
+    return {
+        "run_python": ToolDefinition(
+            name="run_python",
+            description="Execute sandboxed Python on DataFrames from prior steps",
+            params_schema="`code` (str): Python code to execute, `datasets` (list[str]): step refs to load",
+            handler=self._run_python,
+        ),
+        "render_chart": ToolDefinition(
+            name="render_chart",
+            description="Render a matplotlib chart headlessly to PNG",
+            params_schema="`code` (str): matplotlib code, `title` (str): chart title",
+            handler=self._render_chart,
+        ),
+    }
+```
+
+The handler signature is `async (params: dict, user_id: str, context: ToolContext) -> Any`. `ToolContext` gives the handler access to the session registry (for ref↔UUID translation), prior step results (for DataFrame lookup), and the full pipeline state.
+
+Custom tools skip CRUD-specific logic (param validation, delete cleanup, batch manifests). Error handling: return a dict for soft failure (LLM retries within `MAX_TOOL_CALLS_PER_STEP=3`), raise an exception for hard failure (→ `BlockedAction`, step terminates).
+
+Custom tool definitions are injected into Act prompts as a "Domain Tools Reference" table when tools are enabled for the step type. `get_tool_enabled_step_types()` controls WHEN tools appear, `get_custom_tools()` controls WHICH additional tools appear — the two axes are orthogonal.
+
 ### Prompt Log Adapter
 
 Returns a DB client for prompt logging, or `None` to disable DB logging:

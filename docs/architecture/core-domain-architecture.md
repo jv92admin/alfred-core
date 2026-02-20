@@ -64,7 +64,7 @@ src/
 
 ## 2. The DomainConfig Protocol
 
-`DomainConfig` at [base.py:156](src/alfred/domain/base.py#L156) is an ABC that every domain must implement. It has **66 methods** organized into 8 concern areas:
+`DomainConfig` at [base.py:156](src/alfred/domain/base.py#L156) is an ABC that every domain must implement. It has **68 methods** organized into 8 concern areas:
 
 ### Method Census
 
@@ -77,17 +77,17 @@ src/
 | Entity processing | 3 | 10 | 13 | Entity labels, type inference, archive keys, tracking, content markers |
 | Reply formatting | 1 | 8 | 9 | Subdomain formatters, strip fields, record formatting (context + reply) |
 | Mode/agent | 2 | 4 | 6 | `bypass_modes`, `default_agent`, agents, router, compilers, LLM config |
-| Prompts | 0 | 12 | 12 | System prompt, node-specific content/injection (Think, Act, Reply, Understand, Router) |
+| Prompts | 0 | 14 | 14 | System prompt, node-specific content/injection (Think, Act, Reply, Understand, Router), tool-enabled step types, custom tools |
 | User context | 0 | 3 | 3 | `get_user_profile()`, `get_domain_snapshot()`, `get_subdomain_guidance()` |
 | Database | 1 | 0 | 1 | `get_db_adapter()` |
 | Handoff | 1 | 1 | 2 | `get_handoff_result_model()`, `get_handoff_system_prompts()` |
-| **Total** | **23** | **43** | **66** | |
+| **Total** | **23** | **45** | **68** | |
 
-**23 abstract methods** must be implemented. **43 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
+**23 abstract methods** must be implemented. **45 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
 
 ### Supporting Dataclasses
 
-Three dataclasses underpin the protocol:
+Five dataclasses underpin the protocol:
 
 **`EntityDefinition`** at [base.py:26](src/alfred/domain/base.py#L26) — describes one entity type:
 
@@ -120,6 +120,24 @@ Three dataclasses underpin the protocol:
 | `pre_filter_ids` | `list[str] \| None` | IDs from semantic search to filter by |
 | `or_conditions` | `list[str] \| None` | Additional OR conditions |
 | `short_circuit_empty` | `bool` | Return `[]` without querying |
+
+**`ToolDefinition`** at [base.py:97](src/alfred/domain/base.py#L97) — a domain-provided tool:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `name` | `str` | Tool name the LLM emits (e.g., `"run_python"`) |
+| `description` | `str` | One-line description for Act prompt |
+| `params_schema` | `str` | Human-readable param docs for Act prompt |
+| `handler` | `Callable` | Async handler: `(params, user_id, ToolContext) -> Any` |
+
+**`ToolContext`** at [base.py:116](src/alfred/domain/base.py#L116) — context passed to custom tool handlers:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `registry` | `Any` | SessionIdRegistry (ref ↔ UUID translation) |
+| `step_results` | `list` | Results from prior steps in this turn |
+| `current_step_results` | `list` | Tool results from current step so far |
+| `state` | `dict` | Full AlfredState (read-only by convention) |
 
 ### Computed Properties
 

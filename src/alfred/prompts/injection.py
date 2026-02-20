@@ -71,6 +71,7 @@ def build_act_user_prompt(
     # Metadata
     tool_calls_made: int = 0,
     prev_subdomain: str | None = None,
+    tools_enabled: bool = True,
 ) -> str:
     """
     Build the complete Act user prompt from common + step-type sections.
@@ -120,6 +121,7 @@ def build_act_user_prompt(
         current_step_results=current_step_results,
         tool_calls_made=tool_calls_made,
         today=today,
+        tools_enabled=tools_enabled,
     )
     
     # === Build step-type-specific sections ===
@@ -135,6 +137,7 @@ def build_act_user_prompt(
         archive_section=archive_section,
         prev_step_note=prev_step_note,
         prev_subdomain=prev_subdomain,
+        tools_enabled=tools_enabled,
     )
     
     # === Assemble final prompt ===
@@ -226,6 +229,7 @@ def _build_common_sections(
     current_step_results: str,
     tool_calls_made: int,
     today: str,
+    tools_enabled: bool = True,
 ) -> dict[str, str]:
     """
     Build sections common to ALL step types.
@@ -243,14 +247,14 @@ def _build_common_sections(
     Returns dict with keys: status, task, data_section, entities, conversation, decision
     """
     # === STATUS table ===
-    progress_info = f"{tool_calls_made} tool calls" if step_type in ("read", "write") else ""
-    
+    progress_info = f"{tool_calls_made} tool calls" if tools_enabled else ""
+
     status = f"""## STATUS
 | Step | {step_index + 1} of {total_steps} |
 | Goal | {step_description} |
-| Type | {step_type}{' (no db calls)' if step_type in ('analyze', 'generate') else ''} |
+| Type | {step_type}{' (no db calls)' if not tools_enabled else ''} |
 | Progress | {progress_info} |
-| Today | {today} |""" if step_type in ("read", "write") else f"""## STATUS
+| Today | {today} |""" if tools_enabled else f"""## STATUS
 | Step | {step_index + 1} of {total_steps} |
 | Goal | {step_description} |
 | Type | {step_type} (no db calls) |
@@ -282,8 +286,8 @@ def _build_common_sections(
     else:
         data_parts.append("*No previous step data.*")
     
-    # Current step tool results (read/write only)
-    if step_type in ("read", "write") and current_step_results:
+    # Current step tool results (tool-enabled steps only)
+    if tools_enabled and current_step_results:
         data_parts.append("")
         data_parts.append("**This Step:**")
         data_parts.append(current_step_results)
@@ -308,7 +312,7 @@ def _build_common_sections(
 {conversation_context if conversation_context else '*No additional context.*'}"""
     
     # === Decision prompt (varies by step type) ===
-    decision = _build_decision_section(step_type)
+    decision = _build_decision_section(step_type, tools_enabled=tools_enabled)
     
     return {
         "status": status,
@@ -332,6 +336,7 @@ def _build_step_type_sections(
     archive_section: str | None = None,
     prev_step_note: str | None = None,
     prev_subdomain: str | None = None,
+    tools_enabled: bool = True,
 ) -> dict[str, str]:
     """
     Build step-type-specific sections.
@@ -371,8 +376,8 @@ def _build_step_type_sections(
     if guidance:
         result["guidance"] = guidance
     
-    # === Schema (read/write/generate) ===
-    if step_type in ("read", "write", "generate") and schema:
+    # === Schema (tool-enabled steps + generate) ===
+    if (tools_enabled or step_type == "generate") and schema:
         result["schema"] = f"""## 3. Schema ({subdomain})
 
 {schema}"""
@@ -388,8 +393,8 @@ def _build_step_type_sections(
 
 {artifacts_section}"""
     
-    # === Previous step note (read/write) ===
-    if step_type in ("read", "write") and prev_step_note:
+    # === Previous step note (all step types — IDs/refs from prior step) ===
+    if prev_step_note:
         result["prev_note"] = f"""## Previous Step Note
 
 {prev_step_note}"""
@@ -405,36 +410,45 @@ def _build_step_type_sections(
     return result
 
 
-def _build_decision_section(step_type: str) -> str:
+def _build_decision_section(step_type: str, tools_enabled: bool = True) -> str:
     """
     Build the decision prompt for a step type.
-    
+
     See docs/prompts/act-prompt-structure.md for the full specification.
-    
+
     Different step types have different valid actions:
-    - analyze: step_complete only (no db calls)
-    - generate: step_complete only (no db calls)
-    - read/write: tool_call or step_complete
+    - analyze/generate without tools: step_complete only
+    - read/write (or any step with tools): tool_call or step_complete
     """
-    if step_type == "analyze":
+    if step_type == "analyze" and not tools_enabled:
         return """## DECISION
 
 Analyze the data above and complete the step:
 `{"action": "step_complete", "result_summary": "Analysis: ...", "data": {"key": "value"}}`"""
-    
+
     elif step_type == "generate":
         return """## DECISION
 
 Generate the requested content and complete the step:
 `{"action": "step_complete", "result_summary": "Generated: ...", "data": {"your_content": "here"}}`"""
     
-    else:  # read/write
-        return """## DECISION
+    else:  # read/write (or any step with tools enabled)
+        # Build tool examples dynamically (CRUD + domain-provided)
+        tool_lines = [
+            '- Need data? → `{"action": "tool_call", "tool": "db_read", "params": {"table": "...", "filters": [...], "limit": N}}`',
+            '- Need to create? → `{"action": "tool_call", "tool": "db_create", "params": {"table": "...", "data": {...}}}`',
+        ]
+        # Add custom tool examples from domain
+        from alfred.domain import get_current_domain
+        custom_tools = get_current_domain().get_custom_tools()
+        for name, td in custom_tools.items():
+            tool_lines.append(f'- {td.description} → `{{"action": "tool_call", "tool": "{name}", "params": {{...}}}}`')
+
+        return f"""## DECISION
 
 What's next?
-- Step done? → `{"action": "step_complete", "result_summary": "...", "data": {...}, "note_for_next_step": "..."}`
-- Need data? → `{"action": "tool_call", "tool": "db_read", "params": {"table": "...", "filters": [...], "limit": N}}`
-- Need to create? → `{"action": "tool_call", "tool": "db_create", "params": {"table": "...", "data": {...}}}`
+- Step done? → `{{"action": "step_complete", "result_summary": "...", "data": {{...}}, "note_for_next_step": "..."}}`
+{chr(10).join(tool_lines)}
 
 **IMPORTANT:** When completing, write a `note_for_next_step` that says what you accomplished (e.g. "Read user's 15 squad players") and which IDs/refs the next step should use."""
 

@@ -223,8 +223,8 @@ class ActDecision(BaseModel):
     ] = Field(description="The action to take")
 
     # For tool_call
-    tool: Literal["db_read", "db_create", "db_update", "db_delete"] | None = Field(
-        default=None, description="CRUD tool to call"
+    tool: str | None = Field(
+        default=None, description="Tool to call (built-in CRUD or domain-provided)"
     )
     params: dict[str, Any] | None = Field(default=None, description="Tool parameters")
 
@@ -335,7 +335,20 @@ def _load_prompt(filename: str) -> str:
     return _PROMPT_CACHE[filename]
 
 
-def _get_system_prompt(step_type: str = "read") -> str:
+def _format_custom_tool_docs(tools: dict) -> str:
+    """Format domain-provided tool definitions as a prompt reference section."""
+    lines = [
+        "# Domain Tools Reference",
+        "",
+        "| Tool | Purpose | Params |",
+        "|------|---------|--------|",
+    ]
+    for name, td in tools.items():
+        lines.append(f"| `{name}` | {td.description} | {td.params_schema} |")
+    return "\n".join(lines)
+
+
+def _get_system_prompt(step_type: str = "read", tools_enabled: bool = True) -> str:
     """
     Build the Act system prompt from layers.
 
@@ -363,11 +376,15 @@ def _get_system_prompt(step_type: str = "read") -> str:
     # Build layers: base → (crud) → step_type
     parts = [base]
 
-    # CRUD steps need the tools reference
-    if step_type in ("read", "write"):
+    # Steps with tool access need the CRUD reference
+    if tools_enabled:
         crud = _load_prompt("crud.md")
         if crud:
             parts.append(crud)
+        # Inject domain-provided tool docs alongside CRUD
+        custom_tools = domain.get_custom_tools()
+        if custom_tools:
+            parts.append(_format_custom_tool_docs(custom_tools))
 
     # Add step-type-specific content (read.md, write.md, analyze.md, generate.md)
     if step_type_content:
@@ -1076,6 +1093,7 @@ async def act_node(state: AlfredState) -> dict:
 
     # Get step type (V3: read/analyze/generate/write)
     step_type = getattr(current_step, "step_type", "read")
+    tools_enabled = step_type in get_current_domain().get_tool_enabled_step_types()
     tool_calls_made = len(current_step_tool_results)
 
     # Build context sections
@@ -1191,9 +1209,9 @@ async def act_node(state: AlfredState) -> dict:
     # Build prompt using centralized injection module
     # See docs/prompts/act-prompt-structure.md for the full specification
     
-    # Get schema for read/write steps
+    # Get schema for tool-enabled steps (and generate, which needs schema for structure)
     subdomain_schema = None
-    if step_type in ("read", "write", "generate"):
+    if tools_enabled or step_type == "generate":
         subdomain_schema = await get_schema_with_fallback(current_step.subdomain)
     
     # Get previous step's subdomain for cross-domain pattern detection
@@ -1234,12 +1252,13 @@ async def act_node(state: AlfredState) -> dict:
         # Metadata
         tool_calls_made=tool_calls_made,
         prev_subdomain=prev_subdomain,
+        tools_enabled=tools_enabled,
     )
 
     # Call LLM for decision (step_results are already in the prompt)
     decision = await call_llm(
         response_model=ActDecision,
-        system_prompt=_get_system_prompt(step_type),
+        system_prompt=_get_system_prompt(step_type, tools_enabled=tools_enabled),
         user_prompt=user_prompt,
         complexity=current_step.complexity,
     )
@@ -1303,17 +1322,9 @@ async def act_node(state: AlfredState) -> dict:
     # Handle tool_call - execute but DON'T advance step
     # LLM must explicitly call step_complete to advance
     if decision.action == "tool_call" and decision.tool and decision.params:
-        # Fix common LLM hallucinations and validate params
-        fixed_params, validation_error = _fix_and_validate_tool_params(decision.tool, decision.params)
-        if validation_error:
-            return {
-                "pending_action": BlockedAction(
-                    reason_code="TOOL_FAILURE",
-                    details=f"Invalid tool params (unfixable): {validation_error}",
-                    suggested_next="replan",
-                ),
-            }
-        
+        BUILTIN_CRUD = {"db_read", "db_create", "db_update", "db_delete"}
+        custom_tools = get_current_domain().get_custom_tools()
+
         # V4 CONSOLIDATION: Load SESSION ID registry - single source of truth
         # The registry sits between Act and CRUD - LLMs only see simple refs
         registry_data = state.get("id_registry")
@@ -1324,120 +1335,173 @@ async def act_node(state: AlfredState) -> dict:
         else:
             session_registry = SessionIdRegistry.from_dict(registry_data)
         session_registry.set_turn(state.get("current_turn", 1))
-        
-        try:
-            # V4: Execute CRUD with registry - handles ALL ID translation:
-            # - Filters: recipe_1 → real UUID before query
-            # - Payloads: FK refs → real UUIDs before insert/update
-            # - Output: real UUIDs → refs (recipe_1, recipe_2) after query
-            result = await execute_crud(
-                tool=decision.tool,
-                params=fixed_params,
-                user_id=user_id,
-                registry=session_registry,  # V4: Session registry (persists across turns)
-            )
 
-            # Append to current step's tool results (accumulate within step)
-            # Store as (tool_name, table, result) tuple for entity card support
-            # NOTE: result now contains refs (recipe_1), not UUIDs
-            table_name = fixed_params.get("table", "unknown")
-            new_tool_results = current_step_tool_results + [(decision.tool, table_name, result)]
+        if decision.tool in BUILTIN_CRUD:
+            # === Built-in CRUD path (unchanged) ===
+            # Fix common LLM hallucinations and validate params
+            fixed_params, validation_error = _fix_and_validate_tool_params(decision.tool, decision.params)
+            if validation_error:
+                return {
+                    "pending_action": BlockedAction(
+                        reason_code="TOOL_FAILURE",
+                        details=f"Invalid tool params (unfixable): {validation_error}",
+                        suggested_next="replan",
+                    ),
+                }
 
-            # V4 CONSOLIDATION: Clean up registry on delete
-            # This prevents ghost refs from persisting after entities are deleted
-            if decision.tool == "db_delete":
-                # Extract deleted refs from filters
-                filters = fixed_params.get("filters", [])
-                deleted_refs = []
-                for f in filters:
-                    if f.get("field") == "id":
-                        value = f.get("value")
-                        if isinstance(value, str):
-                            deleted_refs.append(value)
-                        elif isinstance(value, list):
-                            deleted_refs.extend(value)
-                
-                if deleted_refs:
-                    # Mark as deleted but KEEP UUID mapping for subsequent steps
-                    # (e.g., need to search meal_plans by deleted recipe_id)
-                    for ref in deleted_refs:
-                        session_registry.ref_actions[ref] = "deleted"
-                    logger.info(f"Act: Marked {len(deleted_refs)} entities as deleted: {deleted_refs}")
-            
-            # V4: Update batch manifest if present (track completed items)
-            updated_batch_manifest = None
-            batch_manifest_data = state.get("current_batch_manifest")
-            if batch_manifest_data and decision.tool == "db_create":
-                batch_manifest = BatchManifest(**batch_manifest_data)
-                
-                # Try to match created records to batch items
-                if isinstance(result, list):
-                    for record in result:
-                        if isinstance(record, dict) and record.get("id"):
-                            # Try to find matching batch item by name/label
-                            record_name = record.get("name") or record.get("title") or ""
-                            for item in batch_manifest.items:
-                                if item.status == "pending":
-                                    # Match by label similarity or just take first pending
-                                    if item.label.lower() in record_name.lower() or record_name.lower() in item.label.lower():
-                                        batch_manifest.mark_completed(item.ref, str(record["id"]))
-                                        break
-                            else:
-                                # No match found, mark first pending item
-                                pending_items = [i for i in batch_manifest.items if i.status == "pending"]
-                                if pending_items:
-                                    batch_manifest.mark_completed(pending_items[0].ref, str(record["id"]))
-                elif isinstance(result, dict) and result.get("id"):
-                    # Single record created
-                    pending_items = [i for i in batch_manifest.items if i.status == "pending"]
-                    if pending_items:
-                        batch_manifest.mark_completed(pending_items[0].ref, str(result["id"]))
-                
-                updated_batch_manifest = batch_manifest.model_dump()
-
-            # Return ToolCallAction - will loop back for more operations
-            action = ToolCallAction(
-                tool=decision.tool,
-                params=decision.params,
-            )
-
-            state_update = {
-                "pending_action": action,
-                "current_step_tool_results": new_tool_results,
-                "id_registry": session_registry.to_dict(),  # V4 CONSOLIDATION: Single source
-                # Note: NO step_index increment - step continues
-            }
-            
-            if updated_batch_manifest:
-                state_update["current_batch_manifest"] = updated_batch_manifest
-            
-            return state_update
-
-        except Exception as e:
-            # Tool call failed — build structured context about what was attempted
-            attempted_items = []
-            table_name = fixed_params.get("table", "unknown")
-            batch_data = fixed_params.get("data", [])
-            if isinstance(batch_data, list):
-                for item in batch_data:
-                    attempted_items.append(
-                        item.get("name") or item.get("title") or item.get("label") or "unnamed"
-                    )
-            elif isinstance(batch_data, dict):
-                attempted_items.append(
-                    batch_data.get("name") or batch_data.get("title") or "unnamed"
+            try:
+                # V4: Execute CRUD with registry - handles ALL ID translation:
+                # - Filters: recipe_1 → real UUID before query
+                # - Payloads: FK refs → real UUIDs before insert/update
+                # - Output: real UUIDs → refs (recipe_1, recipe_2) after query
+                result = await execute_crud(
+                    tool=decision.tool,
+                    params=fixed_params,
+                    user_id=user_id,
+                    registry=session_registry,  # V4: Session registry (persists across turns)
                 )
 
+                # Append to current step's tool results (accumulate within step)
+                # Store as (tool_name, table, result) tuple for entity card support
+                # NOTE: result now contains refs (recipe_1), not UUIDs
+                table_name = fixed_params.get("table", "unknown")
+                new_tool_results = current_step_tool_results + [(decision.tool, table_name, result)]
+
+                # V4 CONSOLIDATION: Clean up registry on delete
+                # This prevents ghost refs from persisting after entities are deleted
+                if decision.tool == "db_delete":
+                    # Extract deleted refs from filters
+                    filters = fixed_params.get("filters", [])
+                    deleted_refs = []
+                    for f in filters:
+                        if f.get("field") == "id":
+                            value = f.get("value")
+                            if isinstance(value, str):
+                                deleted_refs.append(value)
+                            elif isinstance(value, list):
+                                deleted_refs.extend(value)
+
+                    if deleted_refs:
+                        # Mark as deleted but KEEP UUID mapping for subsequent steps
+                        # (e.g., need to search meal_plans by deleted recipe_id)
+                        for ref in deleted_refs:
+                            session_registry.ref_actions[ref] = "deleted"
+                        logger.info(f"Act: Marked {len(deleted_refs)} entities as deleted: {deleted_refs}")
+
+                # V4: Update batch manifest if present (track completed items)
+                updated_batch_manifest = None
+                batch_manifest_data = state.get("current_batch_manifest")
+                if batch_manifest_data and decision.tool == "db_create":
+                    batch_manifest = BatchManifest(**batch_manifest_data)
+
+                    # Try to match created records to batch items
+                    if isinstance(result, list):
+                        for record in result:
+                            if isinstance(record, dict) and record.get("id"):
+                                # Try to find matching batch item by name/label
+                                record_name = record.get("name") or record.get("title") or ""
+                                for item in batch_manifest.items:
+                                    if item.status == "pending":
+                                        # Match by label similarity or just take first pending
+                                        if item.label.lower() in record_name.lower() or record_name.lower() in item.label.lower():
+                                            batch_manifest.mark_completed(item.ref, str(record["id"]))
+                                            break
+                                else:
+                                    # No match found, mark first pending item
+                                    pending_items = [i for i in batch_manifest.items if i.status == "pending"]
+                                    if pending_items:
+                                        batch_manifest.mark_completed(pending_items[0].ref, str(record["id"]))
+                    elif isinstance(result, dict) and result.get("id"):
+                        # Single record created
+                        pending_items = [i for i in batch_manifest.items if i.status == "pending"]
+                        if pending_items:
+                            batch_manifest.mark_completed(pending_items[0].ref, str(result["id"]))
+
+                    updated_batch_manifest = batch_manifest.model_dump()
+
+                # Return ToolCallAction - will loop back for more operations
+                action = ToolCallAction(
+                    tool=decision.tool,
+                    params=decision.params,
+                )
+
+                state_update = {
+                    "pending_action": action,
+                    "current_step_tool_results": new_tool_results,
+                    "id_registry": session_registry.to_dict(),  # V4 CONSOLIDATION: Single source
+                    # Note: NO step_index increment - step continues
+                }
+
+                if updated_batch_manifest:
+                    state_update["current_batch_manifest"] = updated_batch_manifest
+
+                return state_update
+
+            except Exception as e:
+                # Tool call failed — build structured context about what was attempted
+                attempted_items = []
+                table_name = fixed_params.get("table", "unknown")
+                batch_data = fixed_params.get("data", [])
+                if isinstance(batch_data, list):
+                    for item in batch_data:
+                        attempted_items.append(
+                            item.get("name") or item.get("title") or item.get("label") or "unnamed"
+                        )
+                elif isinstance(batch_data, dict):
+                    attempted_items.append(
+                        batch_data.get("name") or batch_data.get("title") or "unnamed"
+                    )
+
+                return {
+                    "pending_action": BlockedAction(
+                        reason_code="TOOL_FAILURE",
+                        details=f"CRUD operation failed: {str(e)}",
+                        suggested_next="ask_user",
+                        attempted_context={
+                            "tool": decision.tool,
+                            "table": table_name,
+                            "items": attempted_items[:10],
+                        },
+                    ),
+                }
+
+        elif decision.tool in custom_tools:
+            # === Custom tool dispatch — domain owns execution ===
+            tool_def = custom_tools[decision.tool]
+            try:
+                from alfred.domain.base import ToolContext
+                ctx = ToolContext(
+                    registry=session_registry,
+                    step_results=state.get("step_results", {}),
+                    current_step_results=current_step_tool_results,
+                    state=state,
+                )
+                result = await tool_def.handler(decision.params, user_id, ctx)
+                # Use tool name as label (custom tools don't have a "table")
+                tool_label = decision.params.get("table", decision.tool)
+                new_tool_results = current_step_tool_results + [(decision.tool, tool_label, result)]
+                return {
+                    "pending_action": ToolCallAction(tool=decision.tool, params=decision.params),
+                    "current_step_tool_results": new_tool_results,
+                    "id_registry": session_registry.to_dict(),
+                }
+            except Exception as e:
+                return {
+                    "pending_action": BlockedAction(
+                        reason_code="TOOL_FAILURE",
+                        details=f"Custom tool '{decision.tool}' failed: {str(e)}",
+                        suggested_next="ask_user",
+                    ),
+                }
+
+        else:
+            # === Unknown tool — blocked ===
+            available = sorted(BUILTIN_CRUD | set(custom_tools.keys()))
             return {
                 "pending_action": BlockedAction(
                     reason_code="TOOL_FAILURE",
-                    details=f"CRUD operation failed: {str(e)}",
-                    suggested_next="ask_user",
-                    attempted_context={
-                        "tool": decision.tool,
-                        "table": table_name,
-                        "items": attempted_items[:10],
-                    },
+                    details=f"Unknown tool '{decision.tool}'. Available: {available}",
+                    suggested_next="replan",
                 ),
             }
 

@@ -399,10 +399,10 @@ class BatchProgress(BaseModel):
 
 
 class ToolCallAction(BaseModel):
-    """Request to call a CRUD tool."""
+    """Request to call a tool (CRUD or domain-provided)."""
 
     action: Literal["tool_call"] = "tool_call"
-    tool: Literal["db_read", "db_create", "db_update", "db_delete"]
+    tool: str  # Built-in CRUD or domain-registered tool name
     params: dict[str, Any]  # Tool-specific params
 
 
