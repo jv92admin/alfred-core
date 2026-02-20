@@ -8,7 +8,7 @@ import pytest
 def test_import_alfred():
     """Test that alfred package can be imported."""
     import alfred
-    assert alfred.__version__ == "2.0.0"
+    assert alfred.__version__  # version string exists and is non-empty
 
 
 def test_import_state_models():

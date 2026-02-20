@@ -770,6 +770,158 @@ async def test_squad_read():
 
 ---
 
+## 12. Running Your Domain
+
+Once your DomainConfig is implemented and registered, here's how to actually run conversations.
+
+### Entry Points
+
+```python
+from alfred.graph.workflow import run_alfred, run_alfred_streaming
+from alfred.memory import initialize_conversation
+```
+
+| Function | Returns | Use Case |
+|----------|---------|----------|
+| `run_alfred()` | `(response: str, conversation: dict)` | CLI tools, tests, scripts |
+| `run_alfred_streaming()` | Async generator of status events | Web servers, real-time UI |
+| `run_alfred_simple()` | `str` (response only) | One-shot queries, no multi-turn |
+
+### Minimal Runner
+
+```python
+import asyncio
+import alfred_fpl  # triggers domain registration
+
+from alfred.graph.workflow import run_alfred
+from alfred.memory import initialize_conversation
+
+
+async def main():
+    conversation = initialize_conversation()
+    user_id = "dev-user-123"
+
+    while True:
+        user_input = input("\nYou: ")
+        if user_input.lower() in ("quit", "exit"):
+            break
+
+        response, conversation = await run_alfred(
+            user_message=user_input,
+            user_id=user_id,
+            conversation=conversation,
+        )
+        print(f"\nAlfred: {response}")
+
+
+asyncio.run(main())
+```
+
+**Key pattern:** `conversation` flows back from `run_alfred()` into the next call. This carries entity refs, turn history, reasoning summaries — everything the pipeline needs for multi-turn coherence. Without passing it back, every turn is a cold start.
+
+### `run_alfred()` Signature
+
+```python
+async def run_alfred(
+    user_message: str,                          # User's input
+    user_id: str,                               # For user-scoped DB queries
+    conversation_id: str | None = None,         # Optional session ID
+    conversation: dict | None = None,           # Multi-turn context (from previous call)
+    mode: str = "plan",                         # "plan" (full pipeline) or "quick" (single tool call)
+    ui_changes: list[dict] | None = None,       # Frontend CRUD changes to acknowledge
+) -> tuple[str, dict]:                          # (response text, updated conversation)
+```
+
+### `initialize_conversation()` Return Shape
+
+```python
+{
+    "engagement_summary": "",           # High-level summary of engagement
+    "recent_turns": [],                 # Last N exchanges (full text)
+    "history_summary": "",              # Compressed older exchanges
+    "step_summaries": [],               # Older step summaries
+    "active_entities": {},              # EntityRef dict for anaphoric resolution
+    "all_entities": {},                 # All entities from conversation
+    "understand_decision_log": [],      # History for Understand routing
+    "turn_summaries": [],               # Turn execution summaries
+    "reasoning_summary": "",            # Compressed older reasoning
+}
+```
+
+### Streaming (for Web Servers)
+
+```python
+from alfred.graph.workflow import run_alfred_streaming
+
+async for event in run_alfred_streaming(user_message, user_id, conversation=conv):
+    match event["type"]:
+        case "thinking":    # Pipeline is planning
+            print(f"  Thinking: {event['message']}")
+        case "plan":        # Think produced steps
+            print(f"  Plan: {event['total_steps']} steps")
+        case "step":        # Act started a step
+            print(f"  Step {event['step']}/{event['total']}: {event['description']}")
+        case "step_complete":
+            print(f"  Step {event['step']} done")
+        case "done":        # Final response
+            response = event["response"]
+            conv = event["conversation"]
+```
+
+### Config Wiring
+
+Core and domain configs are **independent** — both read from `.env` but they're separate Pydantic `BaseSettings` classes.
+
+```
+.env
+├── OPENAI_API_KEY=sk-...        ← Read by CoreSettings (inside alfredagain)
+├── SUPABASE_URL=https://...     ← Read by your DomainSettings
+├── SUPABASE_ANON_KEY=eyJ...     ← Read by your DomainSettings
+├── ALFRED_LOG_PROMPTS=1         ← Read by core's prompt logger
+└── FPL_DEV_USER_ID=abc-123      ← Read by your domain (you define this)
+```
+
+Core loads `CoreSettings` automatically when you import `alfred`. It reads `OPENAI_API_KEY` from the same `.env` file your domain uses. You don't need to pass the API key anywhere — core finds it.
+
+Your domain's `DomainSettings` class reads domain-specific vars. If you have a separate `.env` file (e.g., `fpl/.env`), use the dual `.env` pattern:
+
+```python
+model_config = SettingsConfigDict(
+    env_file=("fpl/.env", ".env"),  # Domain vars first, shared vars as fallback
+)
+```
+
+### Environment Variables Reference
+
+**Required:**
+
+| Env Var | Read By | Purpose |
+|---------|---------|---------|
+| `OPENAI_API_KEY` | Core (`alfred.config`) | LLM API authentication. App will not start without this. |
+
+**Development / Debugging:**
+
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+| `ALFRED_USE_ADVANCED_MODELS` | `"true"` | Set to `"false"` to use gpt-4.1-mini for all nodes (cheaper dev runs) |
+| `ALFRED_LOG_PROMPTS` | `"0"` | Set to `"1"` to log all LLM prompts to `prompt_logs/` directory |
+| `ALFRED_LOG_TO_DB` | `"0"` | Set to `"1"` to log prompts to Supabase `prompt_logs` table |
+| `ALFRED_LOG_KEEP_SESSIONS` | `"4"` | Number of DB log sessions to keep before cleanup |
+| `ALFRED_ENV` | `"development"` | `"development"`, `"staging"`, or `"production"` |
+| `LOG_LEVEL` | `"INFO"` | `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` |
+
+**Observability (optional):**
+
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+| `LANGCHAIN_TRACING_V2` | `"false"` | Enable LangSmith tracing |
+| `LANGCHAIN_API_KEY` | None | LangSmith API key (required if tracing enabled) |
+| `LANGCHAIN_PROJECT` | `"alfred-v2"` | LangSmith project name |
+
+**Tip:** Start with just `OPENAI_API_KEY` and `ALFRED_USE_ADVANCED_MODELS=false`. Add `ALFRED_LOG_PROMPTS=1` when you're tuning prompts. Everything else can wait.
+
+---
+
 ## Checklist
 
 Steps to go from zero to working domain:
@@ -784,6 +936,8 @@ Steps to go from zero to working domain:
 - [ ] Write `get_persona()` for each subdomain
 - [ ] Write basic `get_examples()` for common CRUD patterns
 - [ ] Register in entry point (`main.py`, `server.py`, or test conftest)
+- [ ] Set up `.env` with `OPENAI_API_KEY` + domain Supabase vars
+- [ ] Run `scripts/runner.py` — verify multi-turn conversation works
 - [ ] Test: entity refs appear correctly (`player_1`, `team_2`)
 - [ ] Test: basic CRUD works (read, create)
 - [ ] Test: quick mode produces formatted responses
