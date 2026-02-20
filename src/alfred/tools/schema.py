@@ -357,15 +357,21 @@ def __getattr__(name):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
+def _get_filter_schema() -> str:
+    """Get filter schema from domain config, falling back to built-in constant."""
+    domain_schema = _get_domain().get_filter_schema()
+    return domain_schema if domain_schema else FILTER_SCHEMA
+
+
 def get_subdomain_context(subdomain: str) -> str:
     """
     Get complete subdomain context for Act node:
-    1. Filter schema (operators)
+    1. Filter schema (operators) — from domain or built-in default
     2. Field enums (allowed values for categorical fields)
     3. Semantic notes (clarifications like "pantry = all inventory")
     4. CRUD examples
     """
-    parts = [FILTER_SCHEMA]
+    parts = [_get_filter_schema()]
 
     # Add field enums if available
     enums = _get_field_enums().get(subdomain, {})

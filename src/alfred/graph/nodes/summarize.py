@@ -490,10 +490,7 @@ async def _summarize_assistant_response(response: str, is_proposal: bool = False
     if extracted_names:
         names_hint = f"\n\n**Entities found in full text (use these EXACT names):** {', '.join(extracted_names)}"
     
-    try:
-        result = await call_llm(
-            response_model=AssistantResponseSummary,
-            system_prompt="""Summarize what was accomplished in ONE sentence.
+    _DEFAULT_RESPONSE_SUMMARY_PROMPT = """Summarize what was accomplished in ONE sentence.
 Focus on: what action was taken, what was created/found/updated.
 
 **CRITICAL: Proposals ≠ Completed actions**
@@ -513,7 +510,15 @@ Bad: "Saved Minty Chickpea Salad." (made up name not in original)
 Bad: "Saved three rice bowl recipes." (when text says "I'll save" = proposal, not done)
 
 Keep summaries specific with exact names or IDs when available.
-""",
+"""
+    # Allow domain to override summarize system prompts
+    from alfred.domain import get_current_domain
+    _summarize_overrides = get_current_domain().get_summarize_system_prompts()
+
+    try:
+        result = await call_llm(
+            response_model=AssistantResponseSummary,
+            system_prompt=_summarize_overrides.get("response_summary", _DEFAULT_RESPONSE_SUMMARY_PROMPT),
             # Include beginning (intro/outcome) + extracted names from full text
             user_prompt=f"Summarize this response using EXACT names from the text:{names_hint}\n\n{response[:2000]}",
             complexity="low",
@@ -546,10 +551,7 @@ async def _compress_old_turns(
     user_text = oldest.get("user", "")
     assistant_text = oldest.get("assistant", "")
     
-    try:
-        result = await call_llm(
-            response_model=TurnSummary,
-            system_prompt="""Summarize this conversation exchange in ONE brief sentence.
+    _DEFAULT_TURN_COMPRESSION_PROMPT = """Summarize this conversation exchange in ONE brief sentence.
 Focus on: what the user asked, what action was taken, any entities created/modified.
 
 **CRITICAL: Proposals ≠ Completed actions**
@@ -557,7 +559,14 @@ If Alfred says "I'll do X" or "Here's my plan" → that's a PROPOSAL, not a comp
 - Proposal: "I'll save the recipes" → "User requested X; assistant proposed a plan"
 - Completed: "Done! I saved the recipes" → "Assistant saved recipes: [names]"
 
-Use EXACT entity names from the text. Don't invent names.""",
+Use EXACT entity names from the text. Don't invent names."""
+    from alfred.domain import get_current_domain
+    _summarize_overrides = get_current_domain().get_summarize_system_prompts()
+
+    try:
+        result = await call_llm(
+            response_model=TurnSummary,
+            system_prompt=_summarize_overrides.get("turn_compression", _DEFAULT_TURN_COMPRESSION_PROMPT),
             user_prompt=f"User: {user_text[:500]}\nAssistant: {assistant_text[:500]}",
             complexity="low",
         )
@@ -608,16 +617,13 @@ async def _compress_turns_to_narrative(
         assistant_msg = turn.get("assistant_summary") or turn.get("assistant", "")[:200]
         turns_text += f"User: {user_msg}\nAlfred: {assistant_msg}\n\n"
     
-    try:
-        result = await call_llm(
-            response_model=TurnSummary,
-            system_prompt="""Combine conversation history into ONE brief summary (2-3 sentences max).
+    _DEFAULT_CONVERSATION_COMPRESSION_PROMPT = """Combine conversation history into ONE brief summary (2-3 sentences max).
 
 If there's an existing summary, MERGE it with the new turns — don't repeat or duplicate.
 
 Focus on:
 - What the user wanted to accomplish
-- Key actions taken or decisions made  
+- Key actions taken or decisions made
 - Overall conversation arc
 
 Do NOT include:
@@ -626,7 +632,14 @@ Do NOT include:
 - Repetitive phrases
 
 Write as a single narrative: "User explored meal planning options, decided on 3 fish recipes..."
-""",
+"""
+    from alfred.domain import get_current_domain
+    _summarize_overrides = get_current_domain().get_summarize_system_prompts()
+
+    try:
+        result = await call_llm(
+            response_model=TurnSummary,
+            system_prompt=_summarize_overrides.get("conversation_compression", _DEFAULT_CONVERSATION_COMPRESSION_PROMPT),
             user_prompt=f"""{"Existing summary to merge: " + existing_summary if existing_summary else "No existing summary."}
 
 New turns to add:

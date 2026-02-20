@@ -104,10 +104,9 @@ class DomainDomainConfig(DomainConfig):  # TODO: rename (e.g., FitnessConfig)
         # TODO: 2-3 examples per subdomain (from Questionnaire Q5)
         # Show exact CRUD patterns: what user says → what action to take.
         #
-        # CONTRACT: Core's FILTER_SCHEMA constant contains Kitchen-specific content
-        #   (recipe-oriented "similar" operator docs). Your users will see it in
-        #   Act prompts. Provide strong domain-specific examples here to overpower
-        #   the generic content.
+        # TIP: Override get_filter_schema() to replace kitchen-specific filter
+        #   examples with your domain's column names and patterns. See Optional
+        #   Overrides section below.
         return ""
 
     # === Schema / FK (11 abstract) — from Q2, Q6, Q7, Q8 ===
@@ -323,6 +322,33 @@ class DomainDomainConfig(DomainConfig):  # TODO: rename (e.g., FitnessConfig)
     #             handler=self._compute_stats,
     #         ),
     #     }
+
+    # Filter schema override — replace kitchen-specific examples with yours.
+    #   Default includes ["milk", "eggs"] and semantic search for recipes.
+    #   Override to show your domain's column names and filter patterns.
+    #
+    # def get_filter_schema(self) -> str:
+    #     return """## Filter Syntax
+    # ...your operators and examples...
+    # """
+
+    # Understand system prompt — controls quick mode detection.
+    #   Default instructs LLM to "detect quick mode for simple READ-ONLY queries."
+    #   Override to disable quick mode or change the role description.
+    #
+    # def get_understand_system_prompt(self) -> str:
+    #     return (
+    #         "You are Alfred's MEMORY MANAGER. "
+    #         "Your job: (1) resolve entity references, (2) curate context. "
+    #         "Always set quick_mode to false."
+    #     )
+
+    # Summarize system prompts — replace kitchen examples in summaries.
+    #   Keys: "response_summary", "turn_compression", "conversation_compression"
+    #   Only override the ones you need; missing keys use core defaults.
+    #
+    # def get_summarize_system_prompts(self) -> dict[str, str]:
+    #     return {}
 
 
 # Singleton — imported by __init__.py for registration

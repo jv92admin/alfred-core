@@ -77,13 +77,13 @@ src/
 | Entity processing | 3 | 10 | 13 | Entity labels, type inference, archive keys, tracking, content markers |
 | Reply formatting | 1 | 8 | 9 | Subdomain formatters, strip fields, record formatting (context + reply) |
 | Mode/agent | 2 | 4 | 6 | `bypass_modes`, `default_agent`, agents, router, compilers, LLM config |
-| Prompts | 0 | 14 | 14 | System prompt, node-specific content/injection (Think, Act, Reply, Understand, Router), tool-enabled step types, custom tools |
+| Prompts | 0 | 17 | 17 | System prompt, node-specific content/injection (Think, Act, Reply, Understand, Summarize, Router), tool-enabled step types, custom tools, filter schema |
 | User context | 0 | 3 | 3 | `get_user_profile()`, `get_domain_snapshot()`, `get_subdomain_guidance()` |
 | Database | 1 | 0 | 1 | `get_db_adapter()` |
 | Handoff | 1 | 1 | 2 | `get_handoff_result_model()`, `get_handoff_system_prompts()` |
-| **Total** | **23** | **45** | **68** | |
+| **Total** | **23** | **48** | **71** | |
 
-**23 abstract methods** must be implemented. **45 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
+**23 abstract methods** must be implemented. **48 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
 
 ### Supporting Dataclasses
 

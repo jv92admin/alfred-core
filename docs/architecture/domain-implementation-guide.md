@@ -642,9 +642,58 @@ def get_prompt_log_adapter(self):
 
 Default: `None` (DB logging disabled, file logging still works with `ALFRED_LOG_PROMPTS=1`). File-based logging is the recommended starting point — it requires no database setup and produces full prompt logs for debugging.
 
-### Known Limitation: FILTER_SCHEMA Kitchen Content
+### Filter Schema Override
 
-Core's `FILTER_SCHEMA` constant (`tools/schema.py:288-314`) includes Kitchen-specific `similar` operator docs and `_semantic` filter examples about recipe queries. This content appears in every domain's Act prompts. Your users will see recipe-oriented semantic search docs in their prompts. Not a blocker — provide strong domain-specific examples in `get_examples()` to overpower the generic content. A future core change will make this domain-configurable.
+The default filter schema documentation includes kitchen-oriented examples (`["milk", "eggs"]`, semantic search for `"light summer dinner"`). Override `get_filter_schema()` to replace with domain-specific examples:
+
+```python
+def get_filter_schema(self) -> str:
+    return """## Filter Syntax
+
+Structure: `{"field": "<column>", "op": "<operator>", "value": <value>}`
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `=` | Exact match | `{"field": "position", "op": "=", "value": "MID"}` |
+| `>` `<` `>=` `<=` | Comparison | `{"field": "now_cost", "op": ">", "value": 80}` |
+| `in` | Value in array | `{"field": "web_name", "op": "in", "value": ["Salah", "Saka"]}` |
+| `ilike` | Pattern match | `{"field": "web_name", "op": "ilike", "value": "%son%"}` |
+| `is_null` | Null check | `{"field": "news", "op": "is_null", "value": true}` |
+"""
+```
+
+Default: core's built-in FILTER_SCHEMA with all operators including semantic search. If your domain doesn't support semantic search (`similar` operator), omit it from your override.
+
+### Understand System Prompt Override
+
+The Understand node has a hardcoded system prompt that instructs the LLM to "detect quick mode for simple READ-ONLY queries." If your domain should always use the full pipeline (no quick mode), override `get_understand_system_prompt()`:
+
+```python
+def get_understand_system_prompt(self) -> str:
+    return (
+        "You are Alfred's MEMORY MANAGER. "
+        "Your job: (1) resolve entity references to simple refs from the registry, "
+        "(2) curate context (decide what older entities stay active with reasons). "
+        "NEVER invent entity refs. Always set quick_mode to false."
+    )
+```
+
+Default: core's built-in prompt with quick mode detection enabled.
+
+### Summarize System Prompts Override
+
+The Summarize node has three LLM calls with kitchen-flavored example text ("I'll save the recipes", "Mediterranean Chickpea & Herb Rice Bowl"). Override individual prompts via `get_summarize_system_prompts()`:
+
+```python
+def get_summarize_system_prompts(self) -> dict[str, str]:
+    return {
+        "response_summary": "Summarize what was accomplished in ONE sentence...",
+        # "turn_compression": "...",           # omit to keep core default
+        # "conversation_compression": "...",   # omit to keep core default
+    }
+```
+
+Keys: `"response_summary"`, `"turn_compression"`, `"conversation_compression"`. Only override the ones you need — missing keys fall back to core defaults.
 
 ---
 
@@ -992,7 +1041,7 @@ These are the hard-won rules that aren't in any method signature. They were disc
 | Rule | Why |
 |------|-----|
 | **The 2-turn entity recency window is configurable.** | Override `get_entity_recency_window()` if your domain has high-volume reads. FPL uses `1` to evict data entity refs faster. Default: `2`. |
-| **`FILTER_SCHEMA` contains Kitchen content.** | Core's filter schema docs include `similar` operator and recipe examples. Your domain's Act prompts inherit this. Provide strong domain-specific examples to overpower it. Open core finding — will be made domain-configurable. |
+| **`FILTER_SCHEMA` defaults to Kitchen content.** | Core's default filter schema includes `similar` operator and recipe examples. Override `get_filter_schema()` to replace with domain-specific examples. See § 7b "Filter Schema Override". |
 | **`table_to_type` strips trailing "s".** | The fallback pluralization is `table.rstrip("s")`. Works for "players"→"player" but not irregular plurals. If your tables have irregular plural names, verify the mapping. |
 
 ### The Meta-Rule

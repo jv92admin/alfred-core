@@ -82,16 +82,20 @@ async def understand_node(state: AlfredState) -> dict[str, Any]:
     
     # Use medium complexity for better context inference
     # (gpt-4.1-mini struggles with "these ingredients" = shopping list just shown)
+    DEFAULT_UNDERSTAND_SYSTEM_PROMPT = (
+        "You are Alfred's MEMORY MANAGER. "
+        "Your job: (1) resolve entity references to simple refs from the registry, "
+        "(2) curate context (decide what older entities stay active with reasons), "
+        "(3) detect quick mode for simple READ-ONLY queries. "
+        "NEVER invent entity refs. Think has the raw message — you just resolve refs and curate context."
+    )
+    domain_system_prompt = domain.get_understand_system_prompt()
+    system_prompt = domain_system_prompt if domain_system_prompt else DEFAULT_UNDERSTAND_SYSTEM_PROMPT
+
     try:
         output = await call_llm(
             response_model=UnderstandOutput,
-            system_prompt=(
-                "You are Alfred's MEMORY MANAGER. "
-                "Your job: (1) resolve entity references to simple refs from the registry, "
-                "(2) curate context (decide what older entities stay active with reasons), "
-                "(3) detect quick mode for simple READ-ONLY queries. "
-                "NEVER invent entity refs. Think has the raw message — you just resolve refs and curate context."
-            ),
+            system_prompt=system_prompt,
             user_prompt=full_prompt,
             complexity="medium",  # Upgraded from low - context inference needs smarter model
         )

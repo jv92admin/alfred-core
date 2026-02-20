@@ -1162,14 +1162,71 @@ class DomainConfig(ABC):
 
         Returns the full prompt body with domain-specific examples,
         reference resolution patterns, quick mode table, curation examples,
-        and output contract examples. The core provides only the system prompt;
-        ALL user prompt content comes from the domain.
+        and output contract examples.
 
         Returns:
             Markdown string with the complete Understand prompt body,
             or empty string to fall back to the core template.
         """
         return ""  # Default: fall back to core template
+
+    def get_understand_system_prompt(self) -> str:
+        """
+        Get domain-specific system prompt for the Understand node.
+
+        The Understand node's system prompt defines the LLM's role during
+        reference resolution, context curation, and quick mode detection.
+        Override this to change the role description or disable quick mode
+        detection (e.g., always set quick_mode: false for domains that
+        need full pipeline processing on every request).
+
+        Returns:
+            System prompt string, or empty string to use core default:
+            "You are Alfred's MEMORY MANAGER. Your job: (1) resolve entity
+            references... (2) curate context... (3) detect quick mode..."
+        """
+        return ""  # Default: use core's hardcoded system prompt
+
+    def get_filter_schema(self) -> str:
+        """
+        Get filter operator documentation for Act prompts.
+
+        Returns markdown documenting available filter operators and examples.
+        This appears in every Act prompt (via get_subdomain_context) to teach
+        the LLM how to construct CRUD filter clauses.
+
+        The default includes all standard operators (=, >, <, >=, <=, in,
+        ilike, is_null) plus the semantic search operator (similar) with
+        kitchen-oriented examples. Override to replace the examples with
+        domain-specific ones, or remove the semantic search section if your
+        domain doesn't support it.
+
+        Returns:
+            Markdown string with filter syntax documentation.
+        """
+        return ""  # Default: use core's built-in FILTER_SCHEMA constant
+
+    def get_summarize_system_prompts(self) -> dict[str, str]:
+        """
+        Get domain-specific system prompts for the Summarize node.
+
+        The Summarize node makes up to 3 LLM calls, each with a system prompt:
+        - "response_summary": Summarize what was accomplished in one sentence
+        - "turn_compression": Summarize a single conversation exchange
+        - "conversation_compression": Merge history into a brief summary
+
+        Override individual keys to replace specific prompts. Keys not present
+        in the returned dict fall back to core defaults.
+
+        The core defaults use kitchen-oriented examples ("I'll save the recipes",
+        "Mediterranean Chickpea & Herb Rice Bowl"). Override to use your domain's
+        entity names and action patterns.
+
+        Returns:
+            Dict mapping prompt key to system prompt string.
+            Default: {} (use core defaults for all).
+        """
+        return {}  # Default: use core's built-in system prompts
 
     def get_think_domain_context(self) -> str:
         """
