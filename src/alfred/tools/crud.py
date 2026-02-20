@@ -115,13 +115,7 @@ def apply_filter(query: Any, f: FilterClause) -> Any:
         case "in":
             return query.in_(f.field, f.value)
         case "not_in":
-            # Supabase doesn't have not_in, use neq for single or filter for multiple
-            if isinstance(f.value, list) and len(f.value) == 1:
-                return query.neq(f.field, f.value[0])
-            # For multiple values, we'd need a workaround - for now, log warning
-            import logging
-            logging.getLogger("alfred.crud").warning(f"not_in with multiple values not fully supported: {f}")
-            return query
+            return query.not_.in_(f.field, f.value if isinstance(f.value, list) else [f.value])
         case "ilike":
             return query.ilike(f.field, f.value)
         case "is_null":
