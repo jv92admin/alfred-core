@@ -399,7 +399,7 @@ Several DomainConfig methods have implicit contracts that aren't obvious from th
 | `get_field_enums()` | **Values must be strings.** Core does `', '.join(values)`. Integer or boolean values cause `TypeError`. Use `"0"`, `"true"` etc. |
 | `get_semantic_notes()` | **Keyed by subdomain name.** Core does `.get(subdomain, "")` — direct lookup. Don't key by topic. |
 | `get_subdomain_examples()` | **Returns `dict[str, str]`**, not `dict[str, list[str]]`. Core does `parts.append(examples)` where `examples` is a single string. |
-| `get_fallback_schemas()` | **Load-bearing if no RPC.** Core calls a `get_table_columns` RPC to discover schemas. If the RPC doesn't exist in your Supabase, every table shows "Schema unavailable" in Act prompts. Provide real fallback schemas with column names and types. |
+| `get_fallback_schemas()` | **Load-bearing if no RPC. Keyed by subdomain name** (not table name). Core does `fallback_schemas.get(subdomain, schema)` — same pattern as `get_semantic_notes()`. If you key by table name, the lookup silently misses. Include all tables for a subdomain in one string value. |
 | `compute_entity_label()` | **Never downgrade a real label to a bare ref.** Core calls this on re-reads with column subsets. If the label fields are missing from the result, return the existing label (or `ref`) — not an empty string. |
 | `table_to_type` / `type_to_table` | **Computed properties**, rebuilt from `self.entities` on every access. Not cached. The fallback for `table_to_type` is `table.rstrip("s")` — works for regular plurals only. |
 
@@ -1032,6 +1032,7 @@ These are the hard-won rules that aren't in any method signature. They were disc
 | Rule | Why |
 |------|-----|
 | **`get_fallback_schemas()` is required unless the `get_table_columns` RPC exists.** | Without either, Act prompts show "Schema unavailable" for every table. The LLM guesses column names — most queries fail. |
+| **Fallback schemas are keyed by subdomain name, not table name.** | Core does `fallback_schemas.get(subdomain, schema)` — same pattern as `get_semantic_notes()`. If you key by table name (e.g., `"players": "..."`), the `.get()` silently misses and the LLM sees "Schema unavailable". Key by subdomain (e.g., `"scouting": "players: id...\nteams: id..."`) with all tables for that subdomain in one string. |
 | **Enum values must be strings.** | Core does `', '.join(values)`. Non-string types cause `TypeError`. |
 | **Semantic notes are keyed by subdomain.** | Core does `.get(subdomain, "")`. Don't key by topic. |
 | **Subdomain examples must be strings, not lists.** | Core does `parts.append(examples)`. |

@@ -443,10 +443,15 @@ class DomainConfig(ABC):
         """
         Get hardcoded schema fallbacks per subdomain.
 
-        Used when database introspection fails.
+        Used when database introspection fails. Keyed by **subdomain name**
+        (not table name). Core does ``fallback_schemas.get(subdomain, schema)``
+        — if keys don't match subdomain names, the fallback is silently ignored
+        and Act prompts show "Schema unavailable".
+
+        Include all tables for each subdomain in one string value.
 
         Returns:
-            Dict mapping subdomain to schema text
+            Dict mapping subdomain name to schema text
         """
         ...
 

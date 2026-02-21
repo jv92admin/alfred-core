@@ -168,8 +168,17 @@ class DomainDomainConfig(DomainConfig):  # TODO: rename (e.g., FitnessConfig)
         #   get_table_columns RPC. Without either this or the RPC, Act prompts
         #   show "Schema unavailable" for every table and the LLM guesses
         #   column names — causing most queries to fail.
+        #
+        # CONTRACT: Keyed by SUBDOMAIN name, NOT table name.
+        #   Core does fallback_schemas.get(subdomain, schema) — same pattern
+        #   as get_semantic_notes(). If you key by table name (e.g., "players"),
+        #   the lookup silently misses. Include all tables for a subdomain
+        #   in one string value.
         return {
-            # "things": "id (uuid PK), user_id (uuid), name (text), created_at (timestamptz)",
+            # "activity": (
+            #     "things: id (uuid PK), user_id (uuid), name (text), created_at (timestamptz)\n"
+            #     "other_table: id (uuid PK), thing_id (uuid FK), value (int)"
+            # ),
         }
 
     def get_scope_config(self) -> dict[str, dict]:
