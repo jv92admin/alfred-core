@@ -32,6 +32,7 @@ def _sanitize_text(text: str) -> str:
     """Remove surrogate characters that break UTF-8 encoding."""
     return text.encode("utf-8", errors="replace").decode("utf-8")
 
+
 # Singleton client instances
 _client: instructor.Instructor | None = None
 _raw_async_client: AsyncOpenAI | None = None
@@ -55,7 +56,11 @@ def get_client() -> instructor.Instructor:
     global _client
 
     if _client is None:
-        openai_client = OpenAI(api_key=settings.openai_api_key)
+        openai_client = OpenAI(
+            api_key=settings.openai_api_key,
+            timeout=settings.openai_timeout,
+            max_retries=settings.openai_max_retries,
+        )
         _client = instructor.from_openai(openai_client)
 
     return _client
@@ -71,7 +76,11 @@ def get_raw_async_client() -> AsyncOpenAI:
     global _raw_async_client
 
     if _raw_async_client is None:
-        _raw_async_client = AsyncOpenAI(api_key=settings.openai_api_key)
+        _raw_async_client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            timeout=settings.openai_timeout,
+            max_retries=settings.openai_max_retries,
+        )
 
     return _raw_async_client
 
@@ -205,8 +214,7 @@ def _build_chat_kwargs(
     """Build API kwargs for raw chat completions (shared by chat/chat_stream)."""
     # Sanitize all message content to prevent surrogate encoding errors
     safe_messages = [
-        {**m, "content": _sanitize_text(m["content"])} if "content" in m else m
-        for m in messages
+        {**m, "content": _sanitize_text(m["content"])} if "content" in m else m for m in messages
     ]
     api_kwargs: dict = {
         "model": model,

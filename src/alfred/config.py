@@ -41,6 +41,13 @@ class CoreSettings(BaseSettings):
     # ALFRED_LOG_PROMPTS=1 - log to local files (dev only)
     alfred_log_prompts: bool = False
 
+    # LLM resilience
+    # Timeout in seconds for OpenAI API calls (default matches SDK default)
+    openai_timeout: int = 60
+    # HTTP-level retries on transient errors (429, 5xx, connection errors)
+    # Separate from Instructor's schema validation retries (max_retries in call_llm)
+    openai_max_retries: int = 3
+
     @property
     def is_development(self) -> bool:
         return self.alfred_env == "development"

@@ -68,9 +68,10 @@ Act dispatches each step according to its pattern — loading pattern-specific t
 | [core-public-api.md](core-public-api.md) | Entry points, capabilities table, extension points, multi-repo extraction path |
 | [domain-implementation-guide.md](domain-implementation-guide.md) | Step-by-step guide to building a new domain (FPL worked example) |
 
-### Operations
+### Testing & Operations
 
 | Doc | Covers |
 |-----|--------|
+| [testing.md](testing.md) | Test suite structure, coverage map (164 tests), mock strategies, shared infrastructure |
 | [capabilities.md](capabilities.md) | User-facing capabilities and API surface |
 | [../ROADMAP.md](../ROADMAP.md) | Active work, recently completed, backlog |

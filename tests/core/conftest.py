@@ -170,17 +170,67 @@ class StubDomainConfig(DomainConfig):
 
     def get_db_adapter(self):
         """Return a mock DB adapter for tests."""
-        mock = MagicMock()
-        mock_table = MagicMock()
-        mock_table.select.return_value = mock_table
-        mock_table.insert.return_value = mock_table
-        mock_table.update.return_value = mock_table
-        mock_table.delete.return_value = mock_table
-        mock_table.eq.return_value = mock_table
-        mock_table.execute.return_value = MagicMock(data=[])
-        mock.table.return_value = mock_table
-        mock.rpc.return_value = MagicMock(data=[], execute=MagicMock(return_value=MagicMock(data=[])))
-        return mock
+        return make_mock_db()
+
+
+# ---------------------------------------------------------------------------
+# Reusable mock DB adapter — supports all PostgREST filter methods
+# ---------------------------------------------------------------------------
+
+
+def make_mock_db(data=None):
+    """
+    Create a mock DB adapter with full PostgREST fluent chaining.
+
+    Every filter/builder method returns the same mock_table so calls
+    can be chained freely.  ``execute()`` returns ``MagicMock(data=...)``.
+
+    Args:
+        data: Default rows returned by ``execute()``.  Defaults to ``[]``.
+    """
+    if data is None:
+        data = []
+
+    mock = MagicMock()
+    mock_table = MagicMock()
+
+    # Builder / CRUD starters
+    mock_table.select.return_value = mock_table
+    mock_table.insert.return_value = mock_table
+    mock_table.update.return_value = mock_table
+    mock_table.delete.return_value = mock_table
+
+    # Filter methods (all return mock_table for chaining)
+    mock_table.eq.return_value = mock_table
+    mock_table.neq.return_value = mock_table
+    mock_table.gt.return_value = mock_table
+    mock_table.lt.return_value = mock_table
+    mock_table.gte.return_value = mock_table
+    mock_table.lte.return_value = mock_table
+    mock_table.ilike.return_value = mock_table
+    mock_table.in_.return_value = mock_table
+    mock_table.is_.return_value = mock_table
+    mock_table.contains.return_value = mock_table
+    mock_table.or_.return_value = mock_table
+
+    # not_ proxy — supports not_.in_() and not_.is_()
+    not_proxy = MagicMock()
+    not_proxy.in_.return_value = mock_table
+    not_proxy.is_.return_value = mock_table
+    mock_table.not_ = not_proxy
+
+    # Ordering and limiting
+    mock_table.order.return_value = mock_table
+    mock_table.limit.return_value = mock_table
+
+    # Terminal
+    mock_table.execute.return_value = MagicMock(data=data)
+
+    mock.table.return_value = mock_table
+    mock.rpc.return_value = MagicMock(
+        data=[], execute=MagicMock(return_value=MagicMock(data=[]))
+    )
+    return mock
 
 
 # ---------------------------------------------------------------------------

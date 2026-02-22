@@ -6,6 +6,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.4.1] — 2026-02-22
+
+### Added
+- **CRUD test coverage** (`test_crud.py`, 51 tests) — all 14 filter operators, db_read/create/update/delete, middleware hooks, UUID/NULL sanitization, SessionIdRegistry translation, `gen_*` ref rerouting
+- **Act node test coverage** (`test_act_node.py`, 16 tests) — `should_continue_act` routing for all action types, circuit breaker limits, duplicate empty read detection, tool dispatch with mocked LLM
+- **Pipeline test coverage** (`test_pipeline.py`, 13 tests) — `route_after_understand`/`route_after_think` routing functions, graph topology (6 nodes, entry point), default router output
+- **LLM call resilience** — OpenAI client now configured with explicit `timeout` (60s, configurable via `OPENAI_TIMEOUT`) and `max_retries` (3, configurable via `OPENAI_MAX_RETRIES`). Uses SDK built-in exponential backoff on 429, 5xx, and connection errors. No new dependencies.
+- **LLM resilience tests** (`test_llm_resilience.py`, 8 tests) — settings defaults, env var overrides, constructor arg propagation, singleton lifecycle
+- **Test documentation** (`docs/architecture/testing.md`) — full coverage map, mock strategies, shared infrastructure reference
+- **Enhanced mock DB adapter** (`conftest.py`) — `make_mock_db()` with full PostgREST fluent chaining (14+ filter methods, `not_` proxy)
+
+### Changed
+- `CoreSettings` — added `openai_timeout: int = 60` and `openai_max_retries: int = 3`
+- `get_client()` — passes `timeout` and `max_retries` to `OpenAI()` constructor
+- `get_raw_async_client()` — passes `timeout` and `max_retries` to `AsyncOpenAI()` constructor
+- Test count: 76 → 164
+
 ## [2.4.0] — 2026-02-21
 
 ### Changed

@@ -15,7 +15,15 @@ Extracted core orchestration from kitchen monorepo into `alfredagain` PyPI packa
 - CRUD executor with Supabase adapter
 - Mode system, conversation memory, prompt assembly
 - Domain scaffold + questionnaire
-- 76 core tests
+- 76 core tests → 164 (2.4.1)
+
+### Test Coverage + LLM Resilience (2.4.1)
+CRUD, pipeline, and act node tests. LLM client retry/timeout configuration.
+
+- 88 new tests (76 → 164): CRUD engine (51), act node (16), pipeline (13), LLM resilience (8)
+- `openai_timeout` + `openai_max_retries` settings, propagated to OpenAI/AsyncOpenAI constructors
+- Enhanced mock DB adapter with full PostgREST fluent chaining
+- Test architecture doc (`docs/architecture/testing.md`)
 
 ### Domain Extensibility (2.1.0 – 2.3.2)
 Driven by FPL domain integration — the second domain to use core, surfacing gaps kitchen couldn't find.
