@@ -490,11 +490,16 @@ class DomainConfig(ABC):
 
     def get_tool_enabled_step_types(self) -> set[str]:
         """
-        Step types that have CRUD tool access in Act prompts.
+        Step types that have tool access in Act prompts.
 
-        Default: {"read", "write"} — only read/write steps can make db calls.
-        Override to include "analyze" or "generate" if your domain needs
-        mid-step data fetching (e.g., FPL pulling extra stats during analysis).
+        Controls WHEN tools are available. For read/write steps, tools means
+        CRUD (db_read, db_create, etc.) plus any custom tools. For analyze/
+        generate steps, tools means custom tools only (no CRUD).
+
+        Default: {"read", "write"} — only read/write steps have tool access.
+        Override to include "analyze" or "generate" if your domain registers
+        custom tools that those step types need (e.g., FPL's run_python for
+        analysis, fpl_plot for generation).
 
         Returns:
             Set of step type strings. Valid values: "read", "write", "analyze", "generate".
@@ -503,13 +508,15 @@ class DomainConfig(ABC):
 
     def get_custom_tools(self) -> dict[str, "ToolDefinition"]:
         """
-        Domain-specific tools available alongside built-in CRUD.
+        Domain-specific tools available during Act steps.
 
-        Tools registered here are injected into Act prompts (when tools are
-        enabled for the step type) and dispatched by act_node's tool_call
-        handler. CRUD tools (db_read, db_create, db_update, db_delete) are
-        always available when tools are enabled — this method adds additional
-        tools on top.
+        Tools registered here are injected into Act prompts when tools are
+        enabled for the step type (via get_tool_enabled_step_types()) and
+        dispatched by act_node's tool_call handler.
+
+        Custom tools appear independently from CRUD:
+        - read/write steps: CRUD tools + custom tools
+        - analyze/generate steps (if tool-enabled): custom tools only
 
         Each tool's handler receives (params, user_id, ToolContext) and returns
         a JSON-serializable result dict. For soft failures, return an error dict
@@ -517,9 +524,47 @@ class DomainConfig(ABC):
         raise an exception (→ BlockedAction, step terminates).
 
         Returns:
-            Dict mapping tool name to ToolDefinition. Default: {} (CRUD only).
+            Dict mapping tool name to ToolDefinition. Default: {} (no custom tools).
         """
         return {}
+
+    def get_crud_reference(self) -> str:
+        """
+        Get CRUD tools reference content for read/write Act steps.
+
+        Returns markdown documenting db_read, db_create, db_update, db_delete
+        tools and their param syntax. Injected into Act prompts for read/write
+        steps only (not analyze/generate).
+
+        Override to replace core's crud.md with domain-specific tool docs,
+        or return custom content if your CRUD layer has different tools.
+
+        Returns:
+            Markdown string with CRUD reference, or empty string to use
+            core's built-in crud.md template.
+        """
+        return ""  # Default: use core's crud.md
+
+    def get_act_step_template(self, step_type: str) -> str:
+        """
+        Get step-type template for Act prompts.
+
+        Returns markdown with step-type-specific mechanics (how to execute,
+        output format, quality principles). Called for each step: read, write,
+        analyze, generate.
+
+        Override to replace individual step templates without losing base.md,
+        entity tagging, CRUD reference, or the decision builder. Only the
+        step-type layer is replaced.
+
+        Args:
+            step_type: The act step type (read, write, analyze, generate)
+
+        Returns:
+            Markdown string with step template, or empty string to use
+            core's built-in {step_type}.md template.
+        """
+        return ""  # Default: use core's template
 
     # =========================================================================
     # CRUD Configuration

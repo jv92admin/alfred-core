@@ -315,11 +315,13 @@ class DomainDomainConfig(DomainConfig):  # TODO: rename (e.g., FitnessConfig)
     # def get_tool_enabled_step_types(self) -> set[str]:
     #     return {"read", "write", "analyze"}
 
-    # Domain-specific tools (available alongside built-in CRUD).
+    # Domain-specific tools (independent of built-in CRUD).
     #   Register tools that your domain needs beyond database operations.
     #   Each tool needs: name, description, param docs, async handler.
+    #   - read/write steps: CRUD tools + custom tools
+    #   - analyze/generate steps (if tool-enabled): custom tools only
     #   get_tool_enabled_step_types() controls WHEN tools are available;
-    #   get_custom_tools() controls WHICH additional tools appear.
+    #   get_custom_tools() controls WHICH custom tools appear.
     #
     # def get_custom_tools(self) -> dict[str, ToolDefinition]:
     #     from alfred.domain.base import ToolDefinition
@@ -331,6 +333,20 @@ class DomainDomainConfig(DomainConfig):  # TODO: rename (e.g., FitnessConfig)
     #             handler=self._compute_stats,
     #         ),
     #     }
+
+    # CRUD reference override — replace core's crud.md for read/write steps.
+    #   Only injected for read/write steps (never analyze/generate).
+    #
+    # def get_crud_reference(self) -> str:
+    #     return "# My CRUD Tools\n..."  # Or "" for core default
+
+    # Step template override — replace individual step templates without
+    #   losing base.md, entity tagging, or the decision builder.
+    #
+    # def get_act_step_template(self, step_type: str) -> str:
+    #     if step_type == "analyze":
+    #         return "# ANALYZE\nYour custom analyze mechanics..."
+    #     return ""  # Core default for other step types
 
     # Filter schema override — replace kitchen-specific examples with yours.
     #   Default includes ["milk", "eggs"] and semantic search for recipes.

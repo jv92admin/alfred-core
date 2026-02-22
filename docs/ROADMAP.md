@@ -20,12 +20,13 @@ Extracted core orchestration from kitchen monorepo into `alfredagain` PyPI packa
 ### Domain Extensibility (2.1.0 – 2.3.2)
 Driven by FPL domain integration — the second domain to use core, surfacing gaps kitchen couldn't find.
 
-- **Tool registry** (2.1.0) — `get_tool_enabled_step_types()` + `get_custom_tools()` + `ToolDefinition` / `ToolContext` dataclasses. Domains register custom tools alongside CRUD.
+- **Tool registry** (2.1.0) — `get_tool_enabled_step_types()` + `get_custom_tools()` + `ToolDefinition` / `ToolContext` dataclasses. Domains register custom tools.
 - **Developer docs** (2.2.0) — "Running Your Domain" guide, `run_alfred()` docs, env var reference, quickstart runner script, `NEW-DOMAIN-START-HERE.md`.
 - **Prompt hooks** (2.3.0) — `get_filter_schema()`, `get_understand_system_prompt()`, `get_summarize_system_prompts()`. Eliminates kitchen content leaking into non-kitchen domains.
 - **Bug fixes** (2.3.1–2.3.2) — `not_in` multi-value filter fix, `order_dir` default `"desc"`, sorting params in crud.md.
+- **Act prompt architecture** (2.4.0) — CRUD scoped to read/write only, custom tools independent for any tool-enabled step. `get_crud_reference()` + `get_act_step_template()` hooks. Generate steps now respect `tools_enabled`.
 
-DomainConfig now: 23 abstract, 48 defaults, 71 total methods.
+DomainConfig now: 23 abstract, 50 defaults, 73 total methods.
 
 ---
 

@@ -589,20 +589,24 @@ def get_fk_field_aliases(self) -> dict[str, str]:
 
 ### Tool-Enabled Step Types
 
-Controls which step types get CRUD tool access (schema, db_read, db_create, etc.) in Act prompts:
+Controls which step types have tool access in Act prompts:
 
 ```python
 def get_tool_enabled_step_types(self) -> set[str]:
     return {"read", "write", "analyze"}  # Default: {"read", "write"}
 ```
 
-Default: `{"read", "write"}` — only read/write steps can make database calls. Override to include `"analyze"` if your domain needs mid-analysis data fetching (e.g., pulling additional stats during a comparison), or `"generate"` if content generation needs live data.
+Default: `{"read", "write"}` — only read/write steps have tool access. Override to include `"analyze"` if your domain needs mid-analysis computation (e.g., `run_python` for stats), or `"generate"` if generation needs live data or rendering tools.
 
-When a step type is tool-enabled, its Act prompt includes `crud.md` (tool reference), database schema, current step tool results, and the full tool_call + step_complete decision template. The `step_complete` handler is unchanged — for analyze steps, `decision.data` (the LLM's analysis output) flows downstream regardless of whether tool calls happened during the step.
+What "tool-enabled" means per step type:
+- **read/write**: CRUD tools (`db_read`, `db_create`, etc.) + any custom tools
+- **analyze/generate**: Custom tools only (no CRUD) — these steps don't do database operations
+
+When a step type is tool-enabled, its Act prompt includes tool documentation, database schema, current step tool results, and the tool_call + step_complete decision template. The `step_complete` handler is unchanged — for analyze steps, `decision.data` (the LLM's analysis output) flows downstream regardless of whether tool calls happened during the step.
 
 ### Custom Tools
 
-Register domain-specific tools alongside built-in CRUD via `get_custom_tools()`. Custom tools are dispatched by Act's tool_call handler — core routes by name, the domain owns the handler.
+Register domain-specific tools via `get_custom_tools()`. Custom tools are dispatched by Act's tool_call handler — core routes by name, the domain owns the handler.
 
 ```python
 from alfred.domain.base import ToolDefinition, ToolContext
@@ -628,7 +632,31 @@ The handler signature is `async (params: dict, user_id: str, context: ToolContex
 
 Custom tools skip CRUD-specific logic (param validation, delete cleanup, batch manifests). Error handling: return a dict for soft failure (LLM retries within `MAX_TOOL_CALLS_PER_STEP=3`), raise an exception for hard failure (→ `BlockedAction`, step terminates).
 
-Custom tool definitions are injected into Act prompts as a "Domain Tools Reference" table when tools are enabled for the step type. `get_tool_enabled_step_types()` controls WHEN tools appear, `get_custom_tools()` controls WHICH additional tools appear — the two axes are orthogonal.
+Custom tools appear independently from CRUD: in read/write steps they appear alongside CRUD tools; in analyze/generate steps (when tool-enabled) they appear alone. `get_tool_enabled_step_types()` controls WHEN tools appear, `get_custom_tools()` controls WHICH custom tools appear — the two axes are orthogonal.
+
+### CRUD Reference Override
+
+Override the CRUD tools reference (`crud.md`) injected into read/write Act prompts:
+
+```python
+def get_crud_reference(self) -> str:
+    return ""  # Default: use core's crud.md
+```
+
+Override to replace core's CRUD documentation with domain-specific tool docs, or customize how database tools are described to the LLM. Only affects read/write steps — analyze/generate never receive CRUD docs.
+
+### Step Template Override
+
+Override individual step-type templates (read.md, write.md, analyze.md, generate.md) without losing base.md, entity tagging, or the decision builder:
+
+```python
+def get_act_step_template(self, step_type: str) -> str:
+    if step_type == "analyze":
+        return """# ANALYZE Step\n\nYour domain-specific analyze mechanics..."""
+    return ""  # Default: use core's template for other step types
+```
+
+This replaces only the step-type layer. Base Act behavior (core principles, actions, exit contract) and CRUD/custom tool docs are still injected by core. Use `get_act_prompt_content(step_type)` instead if you need to replace the entire system prompt.
 
 ### Prompt Log Adapter
 

@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.4.0] — 2026-02-21
+
+### Changed
+- **Act prompt architecture overhaul** — CRUD docs (`crud.md`) now only injected for read/write steps (not analyze/generate). Custom tool docs injected independently for any tool-enabled step type.
+- `_build_decision_section()` — generate steps now respect `tools_enabled` (was hardcoded to step_complete-only regardless of tools)
+- `get_custom_tools()` docstring updated — custom tools are independent of CRUD, not "alongside"
+- `get_tool_enabled_step_types()` docstring updated — clarifies read/write get CRUD+custom, analyze/generate get custom only
+
+### Added
+- `get_crud_reference()` — domain hook to override or replace `crud.md` content for read/write steps
+- `get_act_step_template(step_type)` — domain hook to override individual step templates (read.md, write.md, analyze.md, generate.md) without losing base.md, entity tagging, or the decision builder
+- DomainConfig: 23 abstract, 50 defaults, 73 total methods
+
 ## [2.3.2] — 2026-02-20
 
 ### Fixed

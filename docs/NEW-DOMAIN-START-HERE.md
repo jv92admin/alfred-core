@@ -15,7 +15,7 @@ Read these first. They explain the engine your domain will plug into.
 | 1 | [overview.md](docs/architecture/overview.md) | What Alfred is, 5-stage pipeline (Understand → Think → Act → Reply → Summarize), execution patterns, what's deterministic vs LLM | 5 min |
 | 2 | [pipeline-stages.md](docs/architecture/pipeline-stages.md) | What each node does, state flow between them, step types (read/write/analyze/generate), tool_call vs step_complete decisions | 15 min |
 | 3 | [sessions-context-entities.md](docs/architecture/sessions-context-entities.md) | Entity refs (player_1, recipe_3), SessionIdRegistry, ref↔UUID translation, entity lifecycle, context curation, recency windows | 15 min |
-| 4 | [core-domain-architecture.md](docs/architecture/core-domain-architecture.md) | DomainConfig protocol (23 abstract + 48 default methods), what each method group controls, supporting dataclasses | 10 min |
+| 4 | [core-domain-architecture.md](docs/architecture/core-domain-architecture.md) | DomainConfig protocol (23 abstract + 50 default methods), what each method group controls, supporting dataclasses | 10 min |
 
 After these four, you understand the engine. You know what the pipeline does, how entities flow through it, and what your domain needs to provide.
 

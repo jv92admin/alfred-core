@@ -354,43 +354,53 @@ def _get_system_prompt(step_type: str = "read", tools_enabled: bool = True) -> s
 
     Domain can provide the full system prompt (preferred).
     Otherwise falls back to template assembly:
-    1. base.md - Act's role in Alfred (execution engine)
-    2. crud.md - Tools, filters, operators (only for read/write)
-    3. {step_type}.md - Mechanics for this step type
-    4. Domain-specific guidance (from DomainConfig.get_act_prompt_injection)
+    1. base.md — Act's role in Alfred (execution engine)
+    2. crud.md — CRUD tools reference (read/write only, domain-overridable)
+    3. Domain Tools — custom tool docs (any tool-enabled step type)
+    4. {step_type}.md — Step-type mechanics (domain-overridable)
+    5. Domain injection — append-only guidance
 
-    Subdomain content (persona, user profile, schema) is added to user_prompt.
+    CRUD is only injected for read/write steps. Custom tools are injected
+    for any step type where tools are enabled. Domains can override:
+    - Full system prompt: get_act_prompt_content(step_type)
+    - CRUD reference: get_crud_reference()
+    - Step templates: get_act_step_template(step_type)
+    - Append guidance: get_act_prompt_injection(step_type)
     """
     from alfred.domain import get_current_domain
     domain = get_current_domain()
 
-    # Domain can provide the full system prompt (preferred)
+    # Domain can provide the full system prompt (all-or-nothing override)
     domain_content = domain.get_act_prompt_content(step_type)
     if domain_content:
         return domain_content
 
     # Fallback: core template assembly + injection
     base = _load_prompt("base.md")
-    step_type_content = _load_prompt(f"{step_type}.md")
-
-    # Build layers: base → (crud) → step_type
     parts = [base]
 
-    # Steps with tool access need the CRUD reference
-    if tools_enabled:
-        crud = _load_prompt("crud.md")
+    # CRUD reference — read/write only (domain can override)
+    if tools_enabled and step_type in ("read", "write"):
+        crud = domain.get_crud_reference()
+        if not crud:
+            crud = _load_prompt("crud.md")
         if crud:
             parts.append(crud)
-        # Inject domain-provided tool docs alongside CRUD
+
+    # Custom tool docs — any tool-enabled step type (independent of CRUD)
+    if tools_enabled:
         custom_tools = domain.get_custom_tools()
         if custom_tools:
             parts.append(_format_custom_tool_docs(custom_tools))
 
-    # Add step-type-specific content (read.md, write.md, analyze.md, generate.md)
-    if step_type_content:
-        parts.append(step_type_content)
+    # Step-type template — domain can override individual templates
+    step_template = domain.get_act_step_template(step_type)
+    if not step_template:
+        step_template = _load_prompt(f"{step_type}.md")
+    if step_template:
+        parts.append(step_template)
 
-    # Add domain-specific guidance (examples, patterns, table-specific rules)
+    # Domain injection — append-only guidance (examples, patterns, rules)
     domain_injection = domain.get_act_prompt_injection(step_type)
     if domain_injection:
         parts.append(domain_injection)

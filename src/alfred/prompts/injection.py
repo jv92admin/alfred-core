@@ -416,35 +416,50 @@ def _build_decision_section(step_type: str, tools_enabled: bool = True) -> str:
 
     See docs/prompts/act-prompt-structure.md for the full specification.
 
-    Different step types have different valid actions:
-    - analyze/generate without tools: step_complete only
-    - read/write (or any step with tools): tool_call or step_complete
+    Tool availability:
+    - not tools_enabled: step_complete only (any step type)
+    - tools_enabled + read/write: CRUD tools + custom tools + step_complete
+    - tools_enabled + analyze/generate: custom tools only + step_complete
     """
-    if step_type == "analyze" and not tools_enabled:
-        return """## DECISION
+    # Build tool examples based on step type and tools_enabled
+    tool_lines = []
 
-Analyze the data above and complete the step:
-`{"action": "step_complete", "result_summary": "Analysis: ...", "data": {"key": "value"}}`"""
+    if tools_enabled:
+        # CRUD tools — read/write only
+        if step_type in ("read", "write"):
+            tool_lines.extend([
+                '- Need data? → `{"action": "tool_call", "tool": "db_read", "params": {"table": "...", "filters": [...], "limit": N}}`',
+                '- Need to create? → `{"action": "tool_call", "tool": "db_create", "params": {"table": "...", "data": {...}}}`',
+            ])
 
-    elif step_type == "generate":
-        return """## DECISION
-
-Generate the requested content and complete the step:
-`{"action": "step_complete", "result_summary": "Generated: ...", "data": {"your_content": "here"}}`"""
-    
-    else:  # read/write (or any step with tools enabled)
-        # Build tool examples dynamically (CRUD + domain-provided)
-        tool_lines = [
-            '- Need data? → `{"action": "tool_call", "tool": "db_read", "params": {"table": "...", "filters": [...], "limit": N}}`',
-            '- Need to create? → `{"action": "tool_call", "tool": "db_create", "params": {"table": "...", "data": {...}}}`',
-        ]
-        # Add custom tool examples from domain
+        # Custom tools — any tool-enabled step type
         from alfred.domain import get_current_domain
         custom_tools = get_current_domain().get_custom_tools()
         for name, td in custom_tools.items():
             tool_lines.append(f'- {td.description} → `{{"action": "tool_call", "tool": "{name}", "params": {{...}}}}`')
 
-        return f"""## DECISION
+    # No tools available — step_complete only
+    if not tool_lines:
+        if step_type == "analyze":
+            return """## DECISION
+
+Analyze the data above and complete the step:
+`{"action": "step_complete", "result_summary": "Analysis: ...", "data": {"key": "value"}}`"""
+
+        elif step_type == "generate":
+            return """## DECISION
+
+Generate the requested content and complete the step:
+`{"action": "step_complete", "result_summary": "Generated: ...", "data": {"your_content": "here"}}`"""
+
+        else:
+            return """## DECISION
+
+Complete the step:
+`{"action": "step_complete", "result_summary": "...", "data": {...}}`"""
+
+    # Tools available — tool_call + step_complete
+    return f"""## DECISION
 
 What's next?
 - Step done? → `{{"action": "step_complete", "result_summary": "...", "data": {{...}}, "note_for_next_step": "..."}}`

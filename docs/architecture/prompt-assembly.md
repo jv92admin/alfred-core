@@ -56,8 +56,8 @@ Core templates live in `src/alfred/prompts/templates/`:
 | `act/crud.md` | 37 | CRUD tools reference: db_read/db_create/db_update/db_delete parameters, filter operators |
 | `act/read.md` | 151 | READ step: query construction, filter patterns, multi-query strategies, empty result handling |
 | `act/write.md` | 101 | WRITE step: FK handling, batch operations, linked record creation, error recovery |
-| `act/analyze.md` | 107 | ANALYZE step: no DB calls, reasoning over data from previous steps, analysis patterns |
-| `act/generate.md` | 117 | GENERATE step: entity tagging with `gen_*` refs, quality principles, no DB calls |
+| `act/analyze.md` | 107 | ANALYZE step: reasoning over data from previous steps, analysis patterns (tools: domain-configurable) |
+| `act/generate.md` | 117 | GENERATE step: entity tagging with `gen_*` refs, quality principles (tools: domain-configurable) |
 
 **Total:** 1,635 lines of core template content.
 
@@ -67,8 +67,9 @@ The Act node is unique — it has 6 template files that get composed into a sing
 
 ```
 base.md              ← always included (execution engine role)
-  + crud.md          ← only for read/write steps (tool reference)
-  + {step_type}.md   ← read.md, write.md, analyze.md, or generate.md
+  + crud.md          ← read/write only (domain-overridable via get_crud_reference())
+  + custom tool docs ← any tool-enabled step (from get_custom_tools())
+  + {step_type}.md   ← domain-overridable via get_act_step_template(step_type)
   + domain injection ← domain.get_act_prompt_injection(step_type)
 ```
 
@@ -84,8 +85,12 @@ The Act node has the most complex prompt assembly because it handles 4 execution
 
 `_get_system_prompt(step_type)` at [act.py:338](src/alfred/graph/nodes/act.py#L338) builds the system prompt:
 
-1. Check `domain.get_act_prompt_content(step_type)` — if non-empty, return it directly
-2. Otherwise, layer core templates: `base.md` → `crud.md` (read/write only) → `{step_type}.md`
+1. Check `domain.get_act_prompt_content(step_type)` — if non-empty, return it directly (all-or-nothing override)
+2. Otherwise, layer core templates:
+   - `base.md` (always)
+   - `crud.md` or `domain.get_crud_reference()` (read/write only)
+   - Custom tool docs from `domain.get_custom_tools()` (any tool-enabled step)
+   - `{step_type}.md` or `domain.get_act_step_template(step_type)`
 3. Append `domain.get_act_prompt_injection(step_type)` if non-empty
 
 Kitchen provides full replacement prompts via [act_content.py](src/alfred_kitchen/domain/prompts/act_content.py) (696 lines) — one pre-assembled prompt per step type that includes the base layer, CRUD tools, step mechanics, and kitchen-specific examples all in one string.
