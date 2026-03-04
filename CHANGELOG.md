@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.4.2] — 2026-03-03
+
+### Fixed
+- **Domain-neutral default prompts** — removed kitchen-domain examples ("recipes", "Mediterranean Chickpea & Herb Rice Bowl", "meal planning") from all 3 Summarize defaults, FILTER_SCHEMA semantic search docs, and Reply editorial examples. Core defaults now use generic entities ("items", "Weekly Budget Report", "pending tasks").
+- **FILTER_SCHEMA `similar` operator** — label changed from "(recipes only)" to "(if supported by domain)" with neutral examples
+
+### Added
+- **`engagement_summary` override** — `get_summarize_system_prompts()["engagement_summary"]` now supported; previously the only Summarize prompt with no domain override path
+- **Injection Map** (`docs/architecture/injection-map.md`) — comprehensive reference of every DomainConfig prompt hook organized by what it affects (reasoning, UI, capabilities)
+
+### Changed
+- `get_summarize_system_prompts()` docstring updated — documents all 4 keys, removed stale "kitchen-oriented examples" caveat
+
 ## [2.4.1] — 2026-02-22
 
 ### Added

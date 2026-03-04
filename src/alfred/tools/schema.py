@@ -296,18 +296,18 @@ Structure: `{"field": "<column>", "op": "<operator>", "value": <value>}`
 | `in` | Value in array | `{"field": "name", "op": "in", "value": ["milk", "eggs"]}` |
 | `ilike` | Pattern match (% = wildcard) | `{"field": "name", "op": "ilike", "value": "%chicken%"}` |
 | `is_null` | Null check | `{"field": "expiry_date", "op": "is_null", "value": true}` |
-| `similar` | **Semantic search** (recipes only) | `{"field": "_semantic", "op": "similar", "value": "light summer dinner"}` |
+| `similar` | **Semantic search** (if supported by domain) | `{"field": "_semantic", "op": "similar", "value": "budget-friendly options"}` |
 
 ### Semantic Search (`_semantic` filter)
 
-For intent-based recipe queries, use the `_semantic` filter:
-- **Good for**: "light summer dinner", "quick comfort food", "healthy breakfast", "something like pasta carbonara"
+For intent-based queries, use the `_semantic` filter (availability depends on domain configuration):
+- **Good for**: natural language descriptions of what you're looking for
 - **Combines with**: Other filters are applied AFTER semantic narrowing
-- **Example**: Find light recipes with chicken:
+- **Example**: Find items matching an intent with an additional filter:
   ```json
   {"filters": [
-    {"field": "_semantic", "op": "similar", "value": "light healthy meal"},
-    {"field": "name", "op": "ilike", "value": "%chicken%"}
+    {"field": "_semantic", "op": "similar", "value": "high priority tasks"},
+    {"field": "name", "op": "ilike", "value": "%review%"}
   ]}
   ```
 

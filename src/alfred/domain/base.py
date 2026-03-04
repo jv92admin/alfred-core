@@ -1260,17 +1260,14 @@ class DomainConfig(ABC):
         """
         Get domain-specific system prompts for the Summarize node.
 
-        The Summarize node makes up to 3 LLM calls, each with a system prompt:
+        The Summarize node makes up to 4 LLM calls, each with a system prompt:
         - "response_summary": Summarize what was accomplished in one sentence
         - "turn_compression": Summarize a single conversation exchange
         - "conversation_compression": Merge history into a brief summary
+        - "engagement_summary": Update the session theme (1 sentence)
 
         Override individual keys to replace specific prompts. Keys not present
         in the returned dict fall back to core defaults.
-
-        The core defaults use kitchen-oriented examples ("I'll save the recipes",
-        "Mediterranean Chickpea & Herb Rice Bowl"). Override to use your domain's
-        entity names and action patterns.
 
         Returns:
             Dict mapping prompt key to system prompt string.

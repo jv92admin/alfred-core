@@ -497,17 +497,17 @@ Focus on: what action was taken, what was created/found/updated.
 If the text says "I'll do X" or "Here's my plan" or "Does this sound good?" — that's a PROPOSAL.
 Do NOT summarize proposals as completed actions.
 
-- Proposal: "I'll save the recipes" → Summary: "Proposed to save recipes; awaiting confirmation."
-- Completed: "Done! I saved the recipes." → Summary: "Saved recipes: [names]"
+- Proposal: "I'll create the items" → Summary: "Proposed to create items; awaiting confirmation."
+- Completed: "Done! I saved the items." → Summary: "Saved items: [names]"
 
 **CRITICAL: Use EXACT entity names from the text.** Do NOT paraphrase or generalize.
-If the text says "Mediterranean Chickpea & Herb Rice Bowl", use that EXACT name.
+If the text says "Weekly Budget Report", use that EXACT name.
 Do NOT make up names that sound similar but aren't in the original text.
 
-Good: "Saved recipes: Mediterranean Chickpea & Herb Rice Bowl."
-Bad: "Saved the recipes." (too vague)
-Bad: "Saved Minty Chickpea Salad." (made up name not in original)
-Bad: "Saved three rice bowl recipes." (when text says "I'll save" = proposal, not done)
+Good: "Created items: Weekly Budget Report, Q1 Summary."
+Bad: "Created the items." (too vague)
+Bad: "Created Monthly Budget." (made up name not in original)
+Bad: "Created three reports." (when text says "I'll create" = proposal, not done)
 
 Keep summaries specific with exact names or IDs when available.
 """
@@ -556,8 +556,8 @@ Focus on: what the user asked, what action was taken, any entities created/modif
 
 **CRITICAL: Proposals ≠ Completed actions**
 If Alfred says "I'll do X" or "Here's my plan" → that's a PROPOSAL, not a completed action.
-- Proposal: "I'll save the recipes" → "User requested X; assistant proposed a plan"
-- Completed: "Done! I saved the recipes" → "Assistant saved recipes: [names]"
+- Proposal: "I'll create the items" → "User requested X; assistant proposed a plan"
+- Completed: "Done! I saved the items" → "Assistant saved items: [names]"
 
 Use EXACT entity names from the text. Don't invent names."""
     from alfred.domain import get_current_domain
@@ -631,7 +631,7 @@ Do NOT include:
 - Technical details
 - Repetitive phrases
 
-Write as a single narrative: "User explored meal planning options, decided on 3 fish recipes..."
+Write as a single narrative: "User explored available options, selected 3 items, and saved them..."
 """
     from alfred.domain import get_current_domain
     _summarize_overrides = get_current_domain().get_summarize_system_prompts()
@@ -670,11 +670,15 @@ async def _update_engagement_summary(
     Update engagement summary if this was a significant action.
     """
     current_summary = conversation.get("engagement_summary", "")
-    
+
+    _DEFAULT_ENGAGEMENT_SUMMARY_PROMPT = "Update the session summary to reflect what we're helping with. Keep it brief (1 sentence). Focus on the ongoing theme."
+    from alfred.domain import get_current_domain
+    _summarize_overrides = get_current_domain().get_summarize_system_prompts()
+
     try:
         result = await call_llm(
             response_model=EngagementSummary,
-            system_prompt="Update the session summary to reflect what we're helping with. Keep it brief (1 sentence). Focus on the ongoing theme.",
+            system_prompt=_summarize_overrides.get("engagement_summary", _DEFAULT_ENGAGEMENT_SUMMARY_PROMPT),
             user_prompt=f"""Current summary: {current_summary or "New session"}
 
 Latest exchange:

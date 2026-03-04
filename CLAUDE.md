@@ -50,5 +50,6 @@ mypy src/
 | `docs/architecture/overview.md` | Architecture index + pipeline diagram |
 | `docs/architecture/core-domain-architecture.md` | Two-package split, DomainConfig protocol |
 | `docs/architecture/core-public-api.md` | Entry points, extension protocols |
+| `docs/architecture/injection-map.md` | Every domain knob/dial — organized by effect (reasoning, UI, capabilities) |
 | `docs/architecture/domain-implementation-guide.md` | How to build a new domain |
 | `docs/bridge/alfred-domain-design-guide.md` | Design-level guide for speccing new domains |

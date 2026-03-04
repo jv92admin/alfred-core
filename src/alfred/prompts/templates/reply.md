@@ -112,8 +112,8 @@ Use real names, quantities, dates from the actual results.
 
 | Good | Bad |
 |------|-----|
-| "You have 2 cartons of milk and 12 eggs" | "You have some items" |
-| "Item expires Jan 15" | "Some items are expiring soon" |
+| "You have 3 pending tasks and 12 completed" | "You have some items" |
+| "Project deadline is Jan 15" | "Something is due soon" |
 
 ### Show Generated Content in Full
 If Act generated content, show it. Don't reduce to "I created something."

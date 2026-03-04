@@ -1,6 +1,6 @@
 [project]
 name = "alfredagain"
-version = "2.4.1"
+version = "2.4.2"
 description = "Domain-agnostic LLM orchestration engine built on LangGraph"
 readme = "README.md"
 requires-python = ">=3.11"
