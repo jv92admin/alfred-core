@@ -71,16 +71,22 @@ Easiest tier — mechanical updates.
 **Files to check:**
 
 1. `CHANGELOG.md` — Latest entry exists, follows Keep a Changelog format, version matches `pyproject.toml`
-2. `docs/ROADMAP.md` — If a backlog item was completed, move it to "Completed" section
-3. `pyproject.toml` — Version bumped, matches CHANGELOG
+2. `pyproject.toml` — Version bumped, matches CHANGELOG
+3. `docs/ROADMAP.md` — If a P1-P5 backlog item was completed, move it to "Completed" section
+4. `roadmap/active/` — Any items that shipped in this release?
+5. `roadmap/archive/` — Create `v{version}/` folder, move shipped active items into it
+6. `roadmap/BACKLOG.md` — If a backlog idea was addressed, move it to "Promoted" table
 
 **Review protocol:**
 1. Verify `pyproject.toml` version == latest CHANGELOG version == git tag (if tagged)
 2. Verify CHANGELOG entry categorizes correctly (Fixed/Added/Changed/Removed)
-3. If a ROADMAP backlog item was addressed, update its status
-4. Check that version was published to PyPI if applicable
+3. Move shipped `roadmap/active/*.md` items to `roadmap/archive/v{version}/`
+4. Fill in the "Shipped" section of each archived item (version, commits, date)
+5. If a `roadmap/BACKLOG.md` idea was addressed, update the Promoted table
+6. If a `docs/ROADMAP.md` backlog item was addressed, update its status
+7. Check that version was published to PyPI if applicable
 
-**Standard:** Version numbers consistent everywhere. CHANGELOG accurate and complete.
+**Standard:** Version numbers consistent everywhere. CHANGELOG accurate. Active items archived on release.
 
 ---
 
