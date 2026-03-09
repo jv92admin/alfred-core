@@ -1,3 +1,8 @@
+---
+name: doc-review
+description: 'Post-release documentation review and propagation. Run after version bumps, bug fixes, or any code change touching architecture, DomainConfig, prompt templates, or pipeline behavior.'
+---
+
 # /doc-review
 
 Post-release documentation review and propagation for alfred-core.

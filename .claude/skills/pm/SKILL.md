@@ -1,3 +1,8 @@
+---
+name: pm
+description: 'Project management for alfredagain. Research → Plan → Execute lifecycle for work items. Use for new features, bug fixes, status checks, releases, and backlog management.'
+---
+
 # /pm
 
 Project management for `alfredagain` — a public PyPI package where traceability matters.
