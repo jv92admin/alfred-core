@@ -14,7 +14,7 @@ auto-includes) is provided by CRUDMiddleware via the DomainConfig.
 import logging
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,19 @@ class DbReadParams(BaseModel):
     limit: int | None = None
     order_by: str | None = None
     order_dir: Literal["asc", "desc"] = "desc"
+
+    # Aggregate mode — mutually exclusive with columns
+    aggregate: Literal["count", "sum", "avg", "count_distinct"] | None = None
+    aggregate_field: str | None = None  # Required for sum/avg/count_distinct
+
+    @model_validator(mode="after")
+    def _validate_aggregate(self):
+        if self.aggregate:
+            if self.columns:
+                raise ValueError("Cannot use 'columns' with 'aggregate' — they are mutually exclusive")
+            if self.aggregate in ("sum", "avg", "count_distinct") and not self.aggregate_field:
+                raise ValueError(f"'{self.aggregate}' requires 'aggregate_field'")
+        return self
 
 
 class DbCreateParams(BaseModel):
@@ -171,13 +184,29 @@ async def db_read(params: DbReadParams, user_id: str, middleware=None) -> list[d
         or_conditions_extra = result.or_conditions
 
     # Build SELECT clause
-    select_clause = ",".join(params.columns) if params.columns else "*"
+    is_aggregate = params.aggregate is not None
+    if is_aggregate:
+        match params.aggregate:
+            case "count":
+                if params.aggregate_field:
+                    select_clause = f"{params.aggregate_field}.count()"
+                else:
+                    select_clause = "count"
+            case "sum":
+                select_clause = f"{params.aggregate_field}.sum()"
+            case "avg":
+                select_clause = f"{params.aggregate_field}.avg()"
+            case "count_distinct":
+                # PostgREST: count on a specific column returns distinct-aware count
+                select_clause = f"{params.aggregate_field}.count()"
+    else:
+        select_clause = ",".join(params.columns) if params.columns else "*"
 
-    # Apply middleware select additions (e.g., nested relations)
-    for addition in select_additions:
-        keyword = addition.split("(")[0]
-        if keyword not in select_clause:
-            select_clause += f", {addition}"
+        # Apply middleware select additions (e.g., nested relations)
+        for addition in select_additions:
+            keyword = addition.split("(")[0]
+            if keyword not in select_clause:
+                select_clause += f", {addition}"
 
     query = client.table(params.table).select(select_clause)
 
@@ -228,13 +257,12 @@ async def db_read(params: DbReadParams, user_id: str, middleware=None) -> list[d
         if or_conditions:
             query = query.or_(",".join(or_conditions))
 
-    # Apply ordering
-    if params.order_by:
-        query = query.order(params.order_by, desc=(params.order_dir == "desc"))
-
-    # Apply limit
-    if params.limit:
-        query = query.limit(params.limit)
+    # Apply ordering and limit (silently skipped for aggregates)
+    if not is_aggregate:
+        if params.order_by:
+            query = query.order(params.order_by, desc=(params.order_dir == "desc"))
+        if params.limit:
+            query = query.limit(params.limit)
 
     result = query.execute()
     records = result.data

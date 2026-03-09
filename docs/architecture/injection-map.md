@@ -33,8 +33,8 @@ The core ships 11 prompt templates (~1,635 lines) plus inline prompts in each no
 | `understand.md` | Reference resolution logic, entity curation rules, quick-mode detection protocol |
 | `think.md` | Step-type taxonomy (read/write/analyze/generate), plan structure, decision types (plan_direct/propose/clarify) |
 | `act/base.md` | Execution engine role, one-action-per-response rule, step ownership |
-| `act/crud.md` | `db_read`/`db_create`/`db_update`/`db_delete` parameter syntax |
-| `act/read.md` | Filter construction, multi-query strategies, empty result handling |
+| `act/crud.md` | `db_read`/`db_create`/`db_update`/`db_delete` parameter syntax (incl. aggregate params) |
+| `act/read.md` | Filter construction, aggregate functions (count/sum/avg/count_distinct), empty result handling |
 | `act/write.md` | FK handling, batch operations, linked record creation |
 | `act/analyze.md` | Reasoning patterns over in-context data |
 | `act/generate.md` | Artifact structure, `gen_*` ref tagging, quality principles |

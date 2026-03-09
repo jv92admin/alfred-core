@@ -53,13 +53,13 @@ Core templates live in `src/alfred/prompts/templates/`:
 | `summarize.md` | 166 | Summarize node: history management, turn compression, engagement summary rules |
 | `router.md` | 36 | Router node: agent classification (currently single-agent, so minimal) |
 | `act/base.md` | 73 | Act node base: execution engine role, core principles (one action per response, step ownership) |
-| `act/crud.md` | 37 | CRUD tools reference: db_read/db_create/db_update/db_delete parameters, filter operators |
-| `act/read.md` | 151 | READ step: query construction, filter patterns, multi-query strategies, empty result handling |
+| `act/crud.md` | 51 | CRUD tools reference: db_read/db_create/db_update/db_delete parameters, filter operators |
+| `act/read.md` | 240 | READ step: query construction, filter patterns, aggregate functions (count/sum/avg/count_distinct), empty result handling |
 | `act/write.md` | 101 | WRITE step: FK handling, batch operations, linked record creation, error recovery |
 | `act/analyze.md` | 107 | ANALYZE step: reasoning over data from previous steps, analysis patterns (tools: domain-configurable) |
 | `act/generate.md` | 117 | GENERATE step: entity tagging with `gen_*` refs, quality principles (tools: domain-configurable) |
 
-**Total:** 1,635 lines of core template content.
+**Total:** 1,738 lines of core template content.
 
 ### Act Template Layering
 
@@ -420,5 +420,5 @@ The kitchen domain provides full-replacement content for most nodes:
 | [src/alfred/graph/nodes/understand.py](src/alfred/graph/nodes/understand.py) | ~200 | Understand prompt loading with domain override |
 | [src/alfred/graph/nodes/router.py](src/alfred/graph/nodes/router.py) | ~80 | Router prompt loading with injection |
 | [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig: 12 prompt-related abstract/default methods |
-| [src/alfred/prompts/templates/](src/alfred/prompts/templates/) | 1,635 | Core template files (11 .md files) |
+| [src/alfred/prompts/templates/](src/alfred/prompts/templates/) | 1,738 | Core template files (11 .md files) |
 | [src/alfred_kitchen/domain/prompts/](src/alfred_kitchen/domain/prompts/) | 2,443 | Kitchen domain prompt content (8 .py + 3 .md files) |

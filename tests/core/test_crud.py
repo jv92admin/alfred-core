@@ -281,6 +281,138 @@ class TestDbRead:
 
 
 # =============================================================================
+# db_read — aggregates
+# =============================================================================
+
+
+class TestDbReadAggregates:
+    """Test aggregate queries (count, sum, avg, count_distinct)."""
+
+    async def test_count_no_filters(self):
+        mock_db = make_mock_db(data=[{"count": 5}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await db_read(
+                DbReadParams(table="items", aggregate="count"),
+                user_id="user-1",
+            )
+        assert result == [{"count": 5}]
+        mock_db.table().select.assert_called_once_with("count")
+
+    async def test_count_with_filters(self):
+        mock_db = make_mock_db(data=[{"count": 3}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await db_read(
+                DbReadParams(
+                    table="items",
+                    aggregate="count",
+                    filters=[FilterClause(field="category", op="=", value="general")],
+                ),
+                user_id="user-1",
+            )
+        assert result == [{"count": 3}]
+        mock_db.table().select.assert_called_once_with("count")
+        mock_db.table().eq.assert_any_call("category", "general")
+
+    async def test_count_with_field(self):
+        """count with aggregate_field uses column-level syntax."""
+        mock_db = make_mock_db(data=[{"count": 4}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await db_read(
+                DbReadParams(table="items", aggregate="count", aggregate_field="category"),
+                user_id="user-1",
+            )
+        assert result == [{"count": 4}]
+        mock_db.table().select.assert_called_once_with("category.count()")
+
+    async def test_sum(self):
+        mock_db = make_mock_db(data=[{"sum": 150}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await db_read(
+                DbReadParams(table="items", aggregate="sum", aggregate_field="quantity"),
+                user_id="user-1",
+            )
+        assert result == [{"sum": 150}]
+        mock_db.table().select.assert_called_once_with("quantity.sum()")
+
+    async def test_avg(self):
+        mock_db = make_mock_db(data=[{"avg": 12.5}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await db_read(
+                DbReadParams(table="items", aggregate="avg", aggregate_field="price"),
+                user_id="user-1",
+            )
+        assert result == [{"avg": 12.5}]
+        mock_db.table().select.assert_called_once_with("price.avg()")
+
+    async def test_count_distinct(self):
+        mock_db = make_mock_db(data=[{"count": 3}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await db_read(
+                DbReadParams(table="items", aggregate="count_distinct", aggregate_field="category"),
+                user_id="user-1",
+            )
+        assert result == [{"count": 3}]
+        mock_db.table().select.assert_called_once_with("category.count()")
+
+    async def test_aggregate_skips_order_and_limit(self):
+        """order_by and limit are silently ignored for aggregates."""
+        mock_db = make_mock_db(data=[{"count": 10}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            await db_read(
+                DbReadParams(
+                    table="items",
+                    aggregate="count",
+                    limit=5,
+                    order_by="name",
+                ),
+                user_id="user-1",
+            )
+        mock_db.table().order.assert_not_called()
+        mock_db.table().limit.assert_not_called()
+
+    async def test_aggregate_rejects_columns(self):
+        """columns and aggregate are mutually exclusive."""
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            DbReadParams(table="items", aggregate="count", columns=["name"])
+
+    async def test_sum_requires_aggregate_field(self):
+        """sum without aggregate_field raises validation error."""
+        with pytest.raises(ValueError, match="requires 'aggregate_field'"):
+            DbReadParams(table="items", aggregate="sum")
+
+    async def test_avg_requires_aggregate_field(self):
+        with pytest.raises(ValueError, match="requires 'aggregate_field'"):
+            DbReadParams(table="items", aggregate="avg")
+
+    async def test_aggregate_auto_filters_user_id(self):
+        """User-owned tables still get user_id filter with aggregates."""
+        mock_db = make_mock_db(data=[{"count": 5}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            await db_read(
+                DbReadParams(table="items", aggregate="count"),
+                user_id="user-1",
+            )
+        mock_db.table().eq.assert_any_call("user_id", "user-1")
+
+    async def test_aggregate_registry_passthrough(self):
+        """Aggregate results pass through registry without entity registration."""
+        from alfred.core.id_registry import SessionIdRegistry
+
+        registry = SessionIdRegistry()
+        mock_db = make_mock_db(data=[{"count": 7}])
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            result = await execute_crud(
+                "db_read",
+                {"table": "items", "aggregate": "count"},
+                user_id="user-1",
+                registry=registry,
+            )
+        assert result == [{"count": 7}]
+        # No refs should have been registered
+        assert len(registry.ref_to_uuid) == 0
+
+
+# =============================================================================
 # db_create
 # =============================================================================
 

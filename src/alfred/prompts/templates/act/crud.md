@@ -4,7 +4,7 @@
 
 | Tool | Purpose | Params |
 |------|---------|--------|
-| `db_read` | Fetch rows | `table`, `filters`, `or_filters`, `columns`, `limit`, `order_by`, `order_dir` |
+| `db_read` | Fetch rows or aggregate | `table`, `filters`, `or_filters`, `columns`, `limit`, `order_by`, `order_dir`, `aggregate`, `aggregate_field` |
 | `db_create` | Insert row(s) | `table`, `data` (dict or array of dicts) |
 | `db_update` | Modify rows | `table`, `filters`, `data` (dict, applied to ALL matches) |
 | `db_delete` | Remove rows | `table`, `filters` |

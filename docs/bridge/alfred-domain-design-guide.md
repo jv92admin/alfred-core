@@ -229,11 +229,26 @@ Read is the most common operation. It's how the LLM gets data to reason about.
 automatically filters by `user_id`. The user only sees their own data. Reference
 tables (shared data like players, ingredients) don't get this scoping.
 
-**Smart reads via RPCs.** For data-heavy domains, READ doesn't have to be a simple
-table query. The database adapter supports RPCs (stored procedures), so a READ step
-can call a pre-built function that returns aggregated, sorted, or computed data.
-This is the first line of defense against large result sets — push the heavy lifting
-to PostgreSQL rather than feeding thousands of rows to the LLM.
+**Built-in aggregates.** `db_read` supports `aggregate` mode for scalar queries —
+the LLM can ask "how many?", "total of?", "average?" without fetching all rows.
+Set `aggregate` to `count`, `sum`, `avg`, or `count_distinct`, plus `aggregate_field`
+for sum/avg/count_distinct. Filters apply as WHERE before aggregation. Results are
+single-row scalars like `[{"count": 42}]` — no entity refs, no registry tracking.
+
+```
+"How many active recipes do I have?"
+  → db_read: table="recipes", filters=[status=active], aggregate="count"
+  → [{"count": 15}]
+
+"What's my total inventory quantity?"
+  → db_read: table="inventory", aggregate="sum", aggregate_field="quantity"
+  → [{"sum": 340}]
+```
+
+**Smart reads via RPCs.** For more complex aggregation (GROUP BY, multi-table joins,
+ranking), the database adapter supports RPCs (stored procedures). A READ step can
+call a pre-built function that returns pre-computed data. This is the line of defense
+for queries that go beyond what simple aggregates cover.
 
 ```
 "Show top midfielders by expected goals this season"

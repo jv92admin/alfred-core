@@ -79,8 +79,18 @@ class DbReadParams(BaseModel):
     columns: list[str] | None = None       # None = SELECT *
     limit: int | None = None
     order_by: str | None = None
-    order_dir: Literal["asc", "desc"] = "asc"
+    order_dir: Literal["asc", "desc"] = "desc"
+
+    # Aggregate mode — mutually exclusive with columns
+    aggregate: Literal["count", "sum", "avg", "count_distinct"] | None = None
+    aggregate_field: str | None = None     # Required for sum/avg/count_distinct
 ```
+
+**Aggregate mode:** When `aggregate` is set, `db_read()` builds an aggregate SELECT (e.g., `.select("count")`, `.select("quantity.sum()")`) instead of fetching rows. Filters still apply as WHERE clauses before aggregation. `columns`, `limit`, and `order_by` are silently ignored. Results are single-row scalars like `[{"count": 42}]` — no entity IDs, no ref translation.
+
+Validation:
+- `aggregate` + `columns` → `ValueError` (mutually exclusive)
+- `sum`/`avg`/`count_distinct` without `aggregate_field` → `ValueError`
 
 ### DbCreateParams (`tools/crud.py:68`)
 
@@ -315,6 +325,7 @@ The LLM sees both the ref and the human-readable name.
 |---------|--------------|-----------------|
 | Query building | `apply_filter()`, SELECT/INSERT/UPDATE/DELETE construction | `DatabaseAdapter` (thin wrapper around DB client) |
 | Filter operators | 14 ops mapped to PostgREST methods | — |
+| Aggregates | `count`, `sum`, `avg`, `count_distinct` via aggregate SELECT clause | — (uses standard PostgREST syntax) |
 | User scoping | Auto-inject `user_id` filter/field | `get_user_owned_tables()` — which tables need scoping |
 | UUID sanitization | Empty string → None conversion | `get_uuid_fields()` — which fields are UUIDs |
 | Ref translation | `_translate_input_params()`, `_translate_output()` | — (handled by core SessionIdRegistry) |
@@ -331,7 +342,7 @@ The LLM sees both the ref and the human-readable name.
 
 | File | Role | Lines |
 |------|------|-------|
-| `src/alfred/tools/crud.py` | Core CRUD executor | 768 |
+| `src/alfred/tools/crud.py` | Core CRUD executor | 796 |
 | `src/alfred/db/adapter.py` | DatabaseAdapter protocol | 53 |
 | `src/alfred/domain/base.py` | DomainConfig protocol (CRUD-relevant: CRUDMiddleware at line 97, ReadPreprocessResult at line 76, CRUD config methods at lines 396-443) | 1135 total |
 | `src/alfred_kitchen/domain/crud_middleware.py` | Kitchen middleware implementation | 311 |

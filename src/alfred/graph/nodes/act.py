@@ -512,12 +512,20 @@ def _format_step_results(
                     else:
                         lines.append(_summarize_step_data(data, table))
         elif isinstance(result, list):
-            table = domain.infer_table_from_record(result[0]) if result else None
-            lines.append(f"**Step {step_num}** ({len(result)} records):")
-            if is_recent:
-                lines.extend(_format_step_data_clean(result, table))
+            # Detect aggregate result: single row, no 'id' field
+            if (len(result) == 1
+                    and isinstance(result[0], dict)
+                    and "id" not in result[0]):
+                agg = result[0]
+                parts = [f"{k}={v}" for k, v in agg.items()]
+                lines.append(f"**Step {step_num}** (aggregate: {', '.join(parts)})")
             else:
-                lines.append(f"  {len(result)} records")
+                table = domain.infer_table_from_record(result[0]) if result else None
+                lines.append(f"**Step {step_num}** ({len(result)} records):")
+                if is_recent:
+                    lines.extend(_format_step_data_clean(result, table))
+                else:
+                    lines.append(f"  {len(result)} records")
         elif isinstance(result, int):
             lines.append(f"**Step {step_num}**: Affected {result} records")
         elif was_generate_step and artifacts:
@@ -707,7 +715,14 @@ def _format_current_step_results(tool_results: list[tuple], tool_calls_made: int
         # Show result with semantic meaning
         if tool_name == "db_read":
             if isinstance(result, list):
-                if len(result) == 0:
+                # Detect aggregate result: single row, no 'id' field
+                if (len(result) == 1
+                        and isinstance(result[0], dict)
+                        and "id" not in result[0]):
+                    agg = result[0]
+                    parts = [f"**{k}**: {v}" for k, v in agg.items()]
+                    lines.append(f"**Aggregate result:** {', '.join(parts)}")
+                elif len(result) == 0:
                     lines.append("**Result: 0 records found.**")
                     lines.append("→ Empty result. If step goal is READ: this is your answer. If step goal is ADD/CREATE: proceed with db_create.")
                 else:
