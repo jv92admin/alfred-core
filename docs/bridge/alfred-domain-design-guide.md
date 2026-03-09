@@ -234,6 +234,11 @@ the LLM can ask "how many?", "total of?", "average?" without fetching all rows.
 Set `aggregate` to `count`, `sum`, `avg`, or `count_distinct`, plus `aggregate_field`
 for sum/avg/count_distinct. Filters apply as WHERE before aggregation. Results are
 single-row scalars like `[{"count": 42}]` — no entity refs, no registry tracking.
+Aggregates use PostgREST's column-level syntax (e.g., `.select("quantity.sum()")`),
+which requires **PostgREST 12+** (standard on Supabase projects created after mid-2024).
+Verify your Supabase project's PostgREST version supports this — check Dashboard →
+Settings → API. If you're on an older version, `count` will still work but `sum`/`avg`/
+`count_distinct` may need an RPC fallback.
 
 ```
 "How many active recipes do I have?"

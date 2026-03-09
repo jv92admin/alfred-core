@@ -161,4 +161,4 @@ Count, sum, or average instead of fetching rows. Use when the user asks
 
 ## Open Risk
 
-**Supabase aggregate syntax** — the exact `.select()` syntax for SUM/AVG/COUNT DISTINCT needs a spike. PostgREST has evolved this syntax across versions. Task 6 includes a spike step to verify before writing the production code. If the syntax differs from expected, only `db_read()` line ~174 changes — the rest of the plan holds.
+**Supabase aggregate syntax** — uses PostgREST 12+ column-level syntax (e.g., `.select("quantity.sum()")`). Verified that the target Supabase instance runs PostgREST 14.1, which supports this. `count` (bare `.select("count")`) works on all PostgREST versions. `sum`/`avg`/`count_distinct` require PostgREST 12+. This is documented in the bridge design guide with a version check note for domain implementers. First real-world validation will happen when a domain consumer triggers an aggregate query.
