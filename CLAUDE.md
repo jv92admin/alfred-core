@@ -43,6 +43,20 @@ mypy src/
 | `src/alfred/db/adapter.py` | DatabaseAdapter protocol |
 | `src/alfred/tools/crud.py` | CRUD execution engine |
 
+## Project Management
+
+This is a public PyPI package — traceability matters. Use `/pm` to manage work.
+
+```
+roadmap/
+├── active/          ← MMDD-slug.md work items
+├── archive/         ← Shipped work grouped by PyPI version (v2.4.3/, etc.)
+├── BACKLOG.md       ← Ideas not yet scheduled
+└── README.md        ← Conventions + work item template
+```
+
+**Workflow:** `/pm` to start work, track status, or ship. `/doc-review` after every release.
+
 ## Documentation
 
 | Path | Purpose |
