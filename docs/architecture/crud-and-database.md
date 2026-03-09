@@ -122,6 +122,9 @@ class DbDeleteParams(BaseModel):
 | `is_null` | `.is_(field, "null")` | `expiry_date IS NULL` |
 | `is_not_null` | `.not_.is_(field, "null")` | `expiry_date IS NOT NULL` |
 | `contains` | `.contains(field, [value])` | `tags @> ["quick"]` (array containment) |
+| `similar` | _(not in `apply_filter()` — handled by middleware)_ | `field="_semantic", value="light summer dinner"` (vector/semantic search) |
+
+The `similar` operator is not processed by `apply_filter()`. It must be consumed by `CRUDMiddleware.pre_read()`, which runs vector/embedding search and returns `pre_filter_ids`. If `_semantic` filters reach `apply_filter()` unconsumed, it raises `ValueError` — this is intentional, forcing domains to implement semantic search or override `get_filter_schema()` to remove the operator from prompts.
 
 OR filters are serialized into PostgREST `.or_()` string format (e.g., `"name.ilike.%chicken%,cuisine.eq.indian"`).
 

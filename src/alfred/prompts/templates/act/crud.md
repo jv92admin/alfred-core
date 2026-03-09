@@ -27,8 +27,11 @@ Each filter: `{"field": "...", "op": "...", "value": "..."}`
 | `ilike` | Fuzzy text | `{"field": "name", "op": "ilike", "value": "%chicken%"}` |
 | `is_null` | Field is null | `{"field": "due_date", "op": "is_null", "value": true}` |
 | `contains` | Array contains | `{"field": "occasions", "op": "contains", "value": ["weeknight"]}` |
+| `similar` | Semantic search (domain middleware required) | `{"field": "_semantic", "op": "similar", "value": "light summer dinner"}` |
 
 **Note:** Use simple refs like `item_1`, `item_5`. System translates to UUIDs automatically.
+
+**Semantic search:** The `similar` operator uses `field: "_semantic"` (not a real column). It is handled by domain middleware (`CRUDMiddleware.pre_read()`), which runs vector/embedding search and returns matching IDs. Other filters are applied AFTER semantic narrowing. If the domain has not implemented semantic search, this operator will error.
 
 ---
 

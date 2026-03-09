@@ -222,7 +222,8 @@ Read is the most common operation. It's how the LLM gets data to reason about.
 
 **Available filter operators:**
 `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike` (case-insensitive),
-`in` (list), `is` (null check), `contains` (array/JSON), `overlaps` (array overlap)
+`in` (list), `is` (null check), `contains` (array/JSON), `overlaps` (array overlap),
+`similar` (semantic search — requires domain middleware `CRUDMiddleware.pre_read()`)
 
 **User-owned tables get auto-scoped.** If you mark a table as user-owned, every read
 automatically filters by `user_id`. The user only sees their own data. Reference

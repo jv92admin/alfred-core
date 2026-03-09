@@ -54,7 +54,7 @@ What core gives a domain for free:
 |-----------|--------|-------------|
 | **LLM pipeline** | `graph/workflow.py` | Understand → Think → Act (loop) → Reply → Summarize with conditional routing, 3 entry paths. Act dispatches each step according to its execution pattern (Read, Analyze, Generate, Write), loading pattern-specific tools, prompts, and context |
 | **Entity lifecycle** | `core/id_registry.py` | UUID→human refs (`recipe_1`), detail level tracking, FK enrichment, cross-turn persistence |
-| **CRUD execution** | `tools/crud.py` | Filter building (12 operators), ref↔UUID translation, user_id scoping, batch manifests |
+| **CRUD execution** | `tools/crud.py` | Filter building (14 operators), ref↔UUID translation, user_id scoping, batch manifests |
 | **Conversation memory** | `memory/conversation.py` | Turn history with compression, engagement summaries, context windowing (full vs condensed) |
 | **Prompt assembly** | `prompts/injection.py` | 15-section Act prompt builder, quick mode prompts, subdomain guidance injection |
 | **Prompt templates** | `prompts/templates/` | 11 structural .md templates (1,635 lines) as fallback when domain doesn't provide full prompts |

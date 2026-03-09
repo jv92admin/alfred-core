@@ -122,6 +122,31 @@ Use `or_filters` (top-level param) for multiple keywords:
 {"field": "tags", "op": "contains", "value": ["weeknight"]}
 ```
 
+### Semantic Search
+
+For intent-based queries where exact keywords won't work, use the `similar` operator with `_semantic`:
+```json
+{
+  "table": "items",
+  "filters": [
+    {"field": "_semantic", "op": "similar", "value": "light summer dinner"}
+  ],
+  "limit": 10
+}
+```
+
+Combines with other filters — semantic narrowing happens first, then remaining filters apply:
+```json
+{
+  "filters": [
+    {"field": "_semantic", "op": "similar", "value": "quick weeknight meals"},
+    {"field": "tags", "op": "contains", "value": ["easy"]}
+  ]
+}
+```
+
+**Note:** Requires domain middleware (`CRUDMiddleware.pre_read()`). If the domain has not implemented semantic search, this operator will error.
+
 ### Column Selection
 
 If selecting specific columns:
