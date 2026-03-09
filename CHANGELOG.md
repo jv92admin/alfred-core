@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.5.0] — 2026-03-09
+
+### Added
+- **Aggregate functions for `db_read`** — `count`, `sum`, `avg`, `count_distinct` via new `aggregate` and `aggregate_field` parameters. Enables scalar queries ("how many?", "total of?", "average?") without fetching all rows. Filters apply as WHERE before aggregation. Results are single-row scalars (`[{"count": 42}]`) with no entity ref tracking. Requires PostgREST 12+ for sum/avg/count_distinct; count works on all versions.
+- **Aggregate prompt teaching** — `read.md` includes new Aggregates section with 5 examples and usage rules. `crud.md` updated with aggregate params.
+- **Aggregate result formatting** — Act node detects aggregate results (single row, no `id` field) and formats as `"Aggregate result: count: 42"` instead of `"1 records found"`.
+- **12 new aggregate tests** (`TestDbReadAggregates`) — count/sum/avg/count_distinct SELECT clauses, filter composition, validation, registry passthrough, silent limit/order_by ignore. Total: 176 tests.
+
 ## [2.4.3] — 2026-03-08
 
 ### Fixed
