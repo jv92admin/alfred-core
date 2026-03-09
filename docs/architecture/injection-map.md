@@ -20,6 +20,87 @@ Each section includes concrete examples using hypothetical domains — a **CRM**
 
 ---
 
+## Core Templates vs. Domain Content
+
+Before diving into the injection points, understand what the core provides out of the box and what it expects you to replace.
+
+### What core templates handle (you inherit this for free)
+
+The core ships 11 prompt templates (~1,635 lines) plus inline prompts in each node. These define **pipeline mechanics** — not domain opinions:
+
+| Template | What It Defines |
+|----------|-----------------|
+| `understand.md` | Reference resolution logic, entity curation rules, quick-mode detection protocol |
+| `think.md` | Step-type taxonomy (read/write/analyze/generate), plan structure, decision types (plan_direct/propose/clarify) |
+| `act/base.md` | Execution engine role, one-action-per-response rule, step ownership |
+| `act/crud.md` | `db_read`/`db_create`/`db_update`/`db_delete` parameter syntax |
+| `act/read.md` | Filter construction, multi-query strategies, empty result handling |
+| `act/write.md` | FK handling, batch operations, linked record creation |
+| `act/analyze.md` | Reasoning patterns over in-context data |
+| `act/generate.md` | Artifact structure, `gen_*` ref tagging, quality principles |
+| `reply.md` | Editorial principles, phase-appropriate tone, formatting guidelines |
+| `summarize.md` | Turn compression rules, engagement summary protocol |
+| `router.md` | Agent classification (minimal — single-agent mode) |
+
+These are **domain-agnostic**. A CRM domain, a Payments domain, and a Kitchen domain all inherit the same execution mechanics. You override them when you need different _mechanics_, not different _content_.
+
+### What you must provide (no useful defaults)
+
+These are abstract methods — core cannot function without your implementation:
+
+| What | Why Core Can't Default It |
+|------|--------------------------|
+| `entities` / `subdomains` | Your data model. Core has no idea what tables you have. |
+| `get_db_adapter()` | Your database connection. Core doesn't know your Supabase project. |
+| `get_examples()` | Domain-specific few-shot examples. Generic examples would hurt more than help. |
+| `get_persona()` | Your assistant's subdomain-specific voice. |
+| `get_fallback_schemas()` | Your table schemas. Core can introspect at runtime, but needs fallbacks. |
+| `get_field_enums()` / `get_semantic_notes()` | Your field constraints and meanings. |
+| `compute_entity_label()` | How to name your entities. Core doesn't know which fields matter. |
+
+### What has safe defaults (override when ready)
+
+These methods return empty strings or sensible defaults. The pipeline works without them, but quality improves when you provide domain-specific content:
+
+| Method | Default Behavior | When to Override |
+|--------|-----------------|------------------|
+| `get_think_domain_context()` | Empty — Think uses generic planning | When Think makes poor subdomain choices |
+| `get_think_planning_guide()` | Empty — Think doesn't know your subdomain relationships | When Think plans wrong step sequences |
+| `get_act_prompt_injection()` | Empty — Act uses core templates only | When Act makes domain-specific errors (e.g., wrong filter patterns) |
+| `get_act_subdomain_header()` | Empty — no subdomain scoping in prompts | When Act confuses tables across subdomains |
+| `get_reply_subdomain_guide()` | Empty — Reply uses generic formatting | When Reply formats data awkwardly for your domain |
+| `get_system_prompt()` | `"You are a helpful {name} assistant."` | Immediately — this is your assistant's identity |
+| `get_user_profile()` | Empty — no personalization | When you have user preferences to inject |
+| `get_crud_middleware()` | `None` — raw CRUD, no hooks | When you need semantic search, auto-includes, or validation |
+| `get_custom_tools()` | `{}` — no domain tools | When analyze/generate steps need to call external functions |
+| `get_subdomain_formatters()` | `{}` — LLM formats everything | When you want deterministic formatting for quick-mode responses |
+| `get_summarize_system_prompts()` | `{}` — uses core defaults (4 keys: `response_summary`, `turn_compression`, `conversation_compression`, `engagement_summary`) | When summary examples don't match your entity types |
+
+### Override progression
+
+A practical path from "it works" to "it works great":
+
+```
+Day 1:  Implement abstracts. Use core templates. Pipeline runs.
+        ↓
+Day 2:  Add get_system_prompt(), get_act_subdomain_header(),
+        get_examples(). Quality jumps significantly.
+        ↓
+Day 3:  Add get_think_planning_guide(), get_reply_subdomain_guide().
+        Planning and replies improve.
+        ↓
+Day 4:  Add get_user_profile(), get_subdomain_guidance().
+        Personalization kicks in.
+        ↓
+Week 2: Add get_crud_middleware() for semantic search / pre-processing.
+        Add get_custom_tools() for analyze/generate capabilities.
+        ↓
+Week 3: Graduate to full prompt replacement (get_think_prompt_content(),
+        get_act_prompt_content(), etc.) for fine-grained control.
+```
+
+---
+
 ## Part 1: Reasoning — How the LLM Thinks
 
 These injections shape how the LLM understands requests, plans steps, and makes decisions. The user never sees these directly, but they determine quality.

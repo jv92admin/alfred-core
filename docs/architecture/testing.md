@@ -44,7 +44,7 @@ The mock DB adapter supports the complete PostgREST query builder chain: `select
 
 ## Coverage Map
 
-164 tests across 12 test files.
+164 tests across 11 test files.
 
 ### CRUD Engine — `test_crud.py` (51 tests)
 

@@ -273,7 +273,7 @@ Summarize uses **no template files**. All its system prompts are inline strings 
 - History compression: "Summarize this conversation exchange..." ([summarize.py:552](src/alfred/graph/nodes/summarize.py#L552))
 - Engagement summary: "Update the session summary..." ([summarize.py:664](src/alfred/graph/nodes/summarize.py#L664))
 
-These are domain-agnostic tasks (summarizing text), so no domain override is needed.
+Domains can override any of these via `get_summarize_system_prompts()`, which returns a dict with keys: `"response_summary"`, `"turn_compression"`, `"conversation_compression"`, `"engagement_summary"`. Missing keys fall back to core defaults.
 
 ---
 

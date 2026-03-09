@@ -710,7 +710,7 @@ Default: core's built-in prompt with quick mode detection enabled.
 
 ### Summarize System Prompts Override
 
-The Summarize node has three LLM calls with kitchen-flavored example text ("I'll save the recipes", "Mediterranean Chickpea & Herb Rice Bowl"). Override individual prompts via `get_summarize_system_prompts()`:
+The Summarize node has four LLM calls with generic example text. Override individual prompts via `get_summarize_system_prompts()`:
 
 ```python
 def get_summarize_system_prompts(self) -> dict[str, str]:
@@ -718,10 +718,11 @@ def get_summarize_system_prompts(self) -> dict[str, str]:
         "response_summary": "Summarize what was accomplished in ONE sentence...",
         # "turn_compression": "...",           # omit to keep core default
         # "conversation_compression": "...",   # omit to keep core default
+        # "engagement_summary": "...",         # omit to keep core default
     }
 ```
 
-Keys: `"response_summary"`, `"turn_compression"`, `"conversation_compression"`. Only override the ones you need — missing keys fall back to core defaults.
+Keys: `"response_summary"`, `"turn_compression"`, `"conversation_compression"`, `"engagement_summary"`. Only override the ones you need — missing keys fall back to core defaults.
 
 ---
 
