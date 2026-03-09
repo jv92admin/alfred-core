@@ -1,71 +1,60 @@
 # Roadmap
 
-Project management for `alfredagain` (PyPI).
+Project management for `alfredagain` (PyPI). Use `/pm` to manage work.
 
 ## Structure
 
 ```
 roadmap/
-├── active/          ← Work items in progress or planned
-├── archive/         ← Shipped work, grouped by version
-│   └── v2.4.3/     ← All items that shipped in this release
-└── BACKLOG.md       ← Parked ideas, not yet scheduled
+├── active/
+│   └── MMDD-feature-slug/       ← One folder per work item
+│       ├── RESEARCH.md           ← Investigate: function chains, defaults, gaps
+│       ├── PLAN.md               ← Proposed approach, approved by user
+│       └── SUMMARY.md            ← What shipped, decisions, files changed
+├── archive/
+│   └── v2.4.3/                   ← Shipped work, grouped by PyPI version
+│       └── 0308-subdomain-norm/
+├── BACKLOG.md                    ← Ideas not yet scheduled
+└── README.md                     ← This file
 ```
+
+## Lifecycle
+
+Every work item goes through 3 stages:
+
+1. **Research** — Trace the complete function chain. Audit defaults vs customizable. Identify gaps. Document in RESEARCH.md.
+2. **Plan** — Propose approach based on research. Present to user. Document in PLAN.md. Wait for approval.
+3. **Execute + Summarize** — Do the work. Document what happened in SUMMARY.md.
+
+On release, move the folder from `active/` to `archive/v{version}/`.
 
 ## Conventions
 
-### Active Items
+### Naming
 
-**Filename:** `MMDD-slug.md` (e.g., `0309-batch-write-validation.md`)
-
-- `MMDD` = date the item was created (sorts chronologically)
+- **Folder:** `MMDD-slug/` (e.g., `0309-batch-write-validation/`)
+- `MMDD` = date created (sorts chronologically)
 - `slug` = short kebab-case description
-- One file per work item (no separate PLAN/SUMMARY split)
 
-### Archiving on Release
+### Archiving
 
 When a version is published to PyPI:
 
 1. Create `archive/v{version}/` folder
-2. Move all active items that shipped in this release into it
-3. The archive folder name **is** the PyPI version — direct traceability
+2. Move shipped `active/` item folders into it
+3. Fill in the "Shipped" section of each SUMMARY.md
+4. The archive folder name **is** the PyPI version — direct traceability
 
-### Work Item Template
+### Scaling
 
-```markdown
-# {Title}
+- **Hotfix:** RESEARCH can be minimal (a few lines). PLAN can be brief. Still document.
+- **Major feature:** RESEARCH should be thorough — sub-agents, chain tracing, gap analysis.
+- **The stages are checkpoints, not bureaucracy.**
 
-**Goal:** One sentence.
-**Type:** fix | feat | refactor | docs | chore
+## Templates
 
-## Context
+See `/pm` skill for full RESEARCH.md, PLAN.md, and SUMMARY.md templates.
 
-Why this matters. 1-3 sentences.
+## Backlog
 
-## Tasks
-
-- [ ] Task 1
-- [ ] Task 2
-
-## Decisions
-
-| Decision | Choice | Why |
-|----------|--------|-----|
-| ... | ... | ... |
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| ... | ... |
-
-## Shipped
-
-- **Version:** (filled on archive)
-- **Commits:** (filled on archive)
-- **Date:** (filled on archive)
-```
-
-### Backlog
-
-`BACKLOG.md` holds ideas not yet scheduled. When promoted to active, create an `active/MMDD-slug.md` and note it in the backlog's "Promoted" section.
+`BACKLOG.md` holds ideas not yet scheduled. When promoted to active, create an `active/MMDD-slug/` folder and note it in the backlog's "Promoted" section.

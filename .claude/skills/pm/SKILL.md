@@ -8,15 +8,20 @@ Trigger words: "roadmap", "plan", "what's next", "new feature", "backlog", "arch
 
 ## Context
 
-This is a published PyPI package (`alfredagain`). Every change ships to real users. We track work in `roadmap/` with a simple active/archive system — no sprints, milestones, or phases.
+This is a published PyPI package (`alfredagain`). Every change ships to real users. Every feature goes through a 3-stage lifecycle: **Research → Plan → Execute + Summarize**.
 
 ```
 roadmap/
-├── active/          ← Work items in progress (MMDD-slug.md)
-├── archive/         ← Shipped work, grouped by PyPI version
-│   └── v2.4.3/     ← Version folder = traceability
-├── BACKLOG.md       ← Ideas not yet scheduled
-└── README.md        ← Conventions + template
+├── active/
+│   └── MMDD-feature-slug/       ← One folder per work item
+│       ├── RESEARCH.md           ← Stage 1: Investigate before committing to an approach
+│       ├── PLAN.md               ← Stage 2: Proposed approach, presented to user
+│       └── SUMMARY.md            ← Stage 3: What shipped, decisions, files changed
+├── archive/                      ← Shipped work, grouped by PyPI version
+│   └── v2.4.3/
+│       └── 0308-subdomain-norm/
+├── BACKLOG.md                    ← Ideas not yet scheduled
+└── README.md                     ← Conventions + templates
 ```
 
 ---
@@ -25,32 +30,52 @@ roadmap/
 
 Determine which workflow the user needs based on their request:
 
-### 1. Start New Work Item
+### 1. Start New Work Item (Research Stage)
 
-When the user wants to plan or start a feature/fix/refactor:
+When the user wants to explore or start a feature/fix/refactor:
 
 1. Check `roadmap/BACKLOG.md` — is this idea already logged? If so, note it.
-2. Check `roadmap/active/` — is there already an item for this?
-3. Create `roadmap/active/MMDD-slug.md` using the template from `roadmap/README.md`
-4. Fill in: Goal, Type, Context, Tasks (as checklist)
-5. If research is needed before implementation, add a `## Research` section — investigate first, then fill in Tasks and Decisions
+2. Check `roadmap/active/` — is there already a folder for this?
+3. Create `roadmap/active/MMDD-slug/` folder
+4. Create `RESEARCH.md` using the template from `roadmap/README.md`
 
-**Research phase guidance:**
-- Read relevant source files to understand current behavior
-- Use sub-agents for broad codebase searches
-- Document findings in the Research section
-- Only move to Tasks once the approach is clear
+**Research protocol — this is the critical stage:**
 
-### 2. Check Status
+For every feature, trace the **complete function chain** through the pipeline:
+- Which nodes are involved? (Understand → Think → Act → Reply → Summarize)
+- What functions are called at each stage?
+- What state flows between them?
 
-When the user asks "what's active", "what are we working on", "status":
+Audit **defaults vs customizable** at every touchpoint:
+- What does core provide by default?
+- What DomainConfig hooks exist for override?
+- Are there gaps where a domain SHOULD be able to customize but can't?
+- **Default to errors when no domain input is provided.** We don't want silent failures in a public package — if a domain hook is required, fail loudly.
 
-1. List all files in `roadmap/active/`
-2. For each, show: filename, Goal line, incomplete task count
-3. Check `roadmap/BACKLOG.md` for pending ideas
-4. Report concisely
+Use **sub-agents** for broad searches. Trace chains thoroughly.
 
-### 3. Ship / Release
+Document all findings in RESEARCH.md before moving to planning.
+
+### 2. Plan (Plan Stage)
+
+When research is complete, or user says "plan this", "what's the approach":
+
+1. Read the RESEARCH.md findings
+2. Create `PLAN.md` in the same folder using the template
+3. Present the plan to the user for review — do NOT start executing
+4. Wait for user approval or adjustments
+
+**IMPORTANT:** Plans live in the repo, not in Claude's plan mode (which saves to local PC and gets lost). The PLAN.md IS the plan of record.
+
+### 3. Execute + Summarize
+
+When the user approves the plan and says "go", "execute", "do it":
+
+1. Work through the PLAN.md tasks
+2. After execution, create `SUMMARY.md` in the same folder
+3. SUMMARY.md captures: what was actually done, decisions made during execution, files changed, any deviations from the plan
+
+### 4. Ship / Release
 
 When the user says "ship", "release", "publish", "push to PyPI":
 
@@ -60,45 +85,86 @@ When the user says "ship", "release", "publish", "push to PyPI":
 4. Update `CHANGELOG.md` with new entry
 5. Run tests: `python -m pytest tests/ -v`
 6. Commit, push, build, publish to PyPI
-7. Run `/doc-review` (or remind user to run it)
-8. Archive: move shipped `roadmap/active/*.md` items to `roadmap/archive/v{version}/`
-9. Fill in each archived item's "Shipped" section (version, commits, date)
+7. Archive: move shipped `roadmap/active/MMDD-slug/` folders to `roadmap/archive/v{version}/`
+8. Fill in each SUMMARY.md's "Shipped" section (version, commits, date)
+9. Run `/doc-review` (or remind user to run it)
 
-### 4. Manage Backlog
+### 5. Check Status
+
+When the user asks "what's active", "what are we working on", "status":
+
+1. List all folders in `roadmap/active/`
+2. For each, show: folder name, Goal line, which stage it's at (has RESEARCH? PLAN? SUMMARY?)
+3. Check `roadmap/BACKLOG.md` for pending ideas
+4. Report concisely
+
+### 6. Manage Backlog
 
 When the user has an idea but isn't starting it now:
 
 1. Add to `roadmap/BACKLOG.md` Ideas table
-2. If promoting an idea to active, move it to the Promoted table with a link to the new active item
+2. If promoting an idea to active, move it to the Promoted table with a link
 
-### 5. Review Roadmap
+### 7. Review Roadmap
 
 When the user asks "what's the plan", "roadmap", "priorities":
 
-1. Show active items from `roadmap/active/`
+1. Show active items from `roadmap/active/` with their stages
 2. Show backlog from `roadmap/BACKLOG.md`
 3. Show broader priorities from `docs/ROADMAP.md` (P1-P5 backlog)
 4. Suggest what to work on next based on priority and dependencies
 
 ---
 
-## Work Item Template
+## Templates
 
-Use this when creating new items in `roadmap/active/`:
+### RESEARCH.md
 
 ```markdown
-# {Title}
+# Research: {Title}
 
 **Goal:** One sentence.
 **Type:** fix | feat | refactor | docs | chore
+**Date:** YYYY-MM-DD
 
 ## Context
 
 Why this matters. 1-3 sentences.
 
-## Research
+## Function Chain
 
-(If needed — findings from investigating the codebase before planning tasks.)
+Trace through the pipeline — which nodes, functions, and state are involved.
+
+| Stage | Function/File | What Happens | Domain Hook |
+|-------|--------------|--------------|-------------|
+| ... | ... | ... | ... |
+
+## Defaults vs Customizable
+
+| Touchpoint | Current Default | Override Method | Gap? |
+|------------|----------------|-----------------|------|
+| ... | ... | ... | ... |
+
+## Findings
+
+Key observations, edge cases, risks.
+
+## Open Questions
+
+Questions to resolve before planning.
+```
+
+### PLAN.md
+
+```markdown
+# Plan: {Title}
+
+**Date:** YYYY-MM-DD
+**Based on:** RESEARCH.md
+
+## Approach
+
+1-3 sentences describing the chosen approach.
 
 ## Tasks
 
@@ -110,6 +176,38 @@ Why this matters. 1-3 sentences.
 | Decision | Choice | Why |
 |----------|--------|-----|
 | ... | ... | ... |
+
+## Error Handling
+
+How should failures behave? Default to loud errors over silent fallbacks.
+
+## Files to Change
+
+| File | Planned Change |
+|------|---------------|
+| ... | ... |
+```
+
+### SUMMARY.md
+
+```markdown
+# Summary: {Title}
+
+**Date:** YYYY-MM-DD
+
+## What Was Done
+
+Bullet list of actual changes (with commit hashes if available).
+
+## Decisions Made During Execution
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| ... | ... | ... |
+
+## Deviations from Plan
+
+Any changes from the original PLAN.md and why.
 
 ## Files Changed
 
@@ -128,8 +226,10 @@ Why this matters. 1-3 sentences.
 
 ## Principles
 
-- **One file per work item.** No PLAN/RESEARCH/SUMMARY split — keep it simple.
-- **Research before tasks.** If unsure about approach, investigate first and document in the Research section.
-- **Archive by version.** The `archive/v{version}/` folder name IS the PyPI traceability.
+- **Research first.** Trace the full chain before proposing changes. Use sub-agents.
+- **Plans live in the repo.** Not in plan mode, not in your head — in `roadmap/active/`.
+- **Present plans, don't just execute.** The user approves the plan before work begins.
+- **Loud failures over silent defaults.** For core features, error when domain input is missing.
+- **Archive by version.** The `archive/v{version}/` folder IS the PyPI traceability.
 - **CHANGELOG is the public face.** Work items are internal; CHANGELOG is what users see.
-- **Don't over-plan.** A work item can start as just a Goal + Context and grow Tasks as you go.
+- **Stages are checkpoints, not bureaucracy.** A hotfix can have a minimal RESEARCH + PLAN. A major feature needs thorough ones.

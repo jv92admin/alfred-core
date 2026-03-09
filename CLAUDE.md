@@ -49,10 +49,13 @@ This is a public PyPI package — traceability matters. Use `/pm` to manage work
 
 ```
 roadmap/
-├── active/          ← MMDD-slug.md work items
-├── archive/         ← Shipped work grouped by PyPI version (v2.4.3/, etc.)
-├── BACKLOG.md       ← Ideas not yet scheduled
-└── README.md        ← Conventions + work item template
+├── active/
+│   └── MMDD-slug/        ← Research → Plan → Execute + Summarize
+│       ├── RESEARCH.md   ← Trace function chains, audit defaults vs customizable
+│       ├── PLAN.md       ← Proposed approach, approved before execution
+│       └── SUMMARY.md    ← What shipped, decisions, files changed
+├── archive/v{version}/   ← Shipped work grouped by PyPI version
+└── BACKLOG.md
 ```
 
 **Workflow:** `/pm` to start work, track status, or ship. `/doc-review` after every release.
