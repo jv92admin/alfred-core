@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.4.3] — 2026-03-08
+
+### Fixed
+- **Subdomain normalization on full Act path** — alias subdomains (e.g. "deals" → "crm") were not normalized before schema lookup, causing "Unknown subdomain" errors. Act Quick already normalized; full Act now does too.
+
 ## [2.4.2] — 2026-03-03
 
 ### Fixed

@@ -1103,6 +1103,7 @@ async def act_node(state: AlfredState) -> dict:
 
     # Get step type (V3: read/analyze/generate/write)
     step_type = getattr(current_step, "step_type", "read")
+    current_step.subdomain = _normalize_subdomain(current_step.subdomain)
     tools_enabled = step_type in get_current_domain().get_tool_enabled_step_types()
     tool_calls_made = len(current_step_tool_results)
 
