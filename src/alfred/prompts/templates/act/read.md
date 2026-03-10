@@ -149,15 +149,13 @@ Combines with other filters — semantic narrowing happens first, then remaining
 
 ### Column Selection
 
-If selecting specific columns:
-- **Always include `id`** — required for entity tracking
-- **Always include `name` or `title`** — for readability
+**Don't pass `columns` unless you have a specific reason.** Omitting it returns all fields (including `id` for entity tracking).
+
+If you DO pass `columns`, you **MUST** include `id` — without it, entity tracking breaks silently. Also include `name` or `title` for readability.
 
 ```json
 {"columns": ["id", "name", "instructions"]}
 ```
-
-**Prefer omitting `columns` entirely** to get all fields.
 
 ---
 

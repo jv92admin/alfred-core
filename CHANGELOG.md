@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.5.1] — 2026-03-09
+
+### Fixed
+- **Auto-prepend `id` to column selection** — if the LLM passes `columns` without `id`, `db_read` now prepends it automatically. Prevents silent entity tracking breakage. No-op when `id` is already present or `columns` is omitted.
+- **Stronger column selection guidance in prompts** — `crud.md` and `read.md` now explicitly discourage passing `columns` unless needed, and warn that `id` is mandatory.
+
 ## [2.5.0] — 2026-03-09
 
 ### Added

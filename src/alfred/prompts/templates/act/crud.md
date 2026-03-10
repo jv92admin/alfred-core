@@ -46,6 +46,12 @@ When `order_by` is set, results are sorted by that column. Default direction is 
 
 ---
 
+## Column Selection
+
+Don't pass `columns` unless you have a specific reason. Omitting it returns all fields including `id` (required for entity tracking). If you DO pass `columns`, you **must** include `id`.
+
+---
+
 ## Schema = Your Tables
 
 Only access tables shown in the schema section. Query results are facts — 0 records means empty.

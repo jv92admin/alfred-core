@@ -200,6 +200,8 @@ async def db_read(params: DbReadParams, user_id: str, middleware=None) -> list[d
                 # PostgREST: count on a specific column returns distinct-aware count
                 select_clause = f"{params.aggregate_field}.count()"
     else:
+        if params.columns and "id" not in params.columns:
+            params.columns.insert(0, "id")
         select_clause = ",".join(params.columns) if params.columns else "*"
 
         # Apply middleware select additions (e.g., nested relations)

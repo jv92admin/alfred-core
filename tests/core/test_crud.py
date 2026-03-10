@@ -162,7 +162,17 @@ class TestDbRead:
                 DbReadParams(table="items", columns=["name", "category"]),
                 user_id="user-1",
             )
-        mock_db.table().select.assert_called_once_with("name,category")
+        # id is auto-prepended when LLM omits it
+        mock_db.table().select.assert_called_once_with("id,name,category")
+
+    async def test_read_with_columns_id_already_present(self, mock_db):
+        with patch("alfred.tools.crud._get_client", return_value=mock_db):
+            await db_read(
+                DbReadParams(table="items", columns=["id", "name"]),
+                user_id="user-1",
+            )
+        # id not duplicated when already present
+        mock_db.table().select.assert_called_once_with("id,name")
 
     async def test_read_with_order_desc(self, mock_db):
         with patch("alfred.tools.crud._get_client", return_value=mock_db):
