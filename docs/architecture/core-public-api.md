@@ -74,11 +74,11 @@ What core gives a domain for free:
 
 These are the protocols and hooks a domain implements to customize core behavior:
 
-### DomainConfig (66 methods)
+### DomainConfig (74 methods)
 
 [domain/base.py:156](src/alfred/domain/base.py#L156) — the central protocol. See [core-domain-architecture.md](core-domain-architecture.md) for the full method census.
 
-23 abstract methods define what a domain **is** (entities, subdomains, personas). 43 default methods provide fallbacks that a domain can progressively override.
+23 abstract methods define what a domain **is** (entities, subdomains, personas). 51 default methods provide fallbacks that a domain can progressively override.
 
 ### DatabaseAdapter
 
@@ -224,7 +224,7 @@ The FPL domain has validated the protocol — two production domains (Kitchen, F
 | File | Lines | Role |
 |------|-------|------|
 | [src/alfred/graph/workflow.py](src/alfred/graph/workflow.py) | 993 | Entry points: `run_alfred_streaming()`, `run_alfred()`, `create_alfred_graph()` |
-| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig protocol (66 methods) |
+| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig protocol (74 methods) |
 | [src/alfred/domain/__init__.py](src/alfred/domain/__init__.py) | 79 | `register_domain()`, `get_current_domain()` |
 | [src/alfred/db/adapter.py](src/alfred/db/adapter.py) | 53 | DatabaseAdapter protocol |
 | [src/alfred/core/payload_compiler.py](src/alfred/core/payload_compiler.py) | 174 | SubdomainCompiler, PayloadCompilerRegistry |

@@ -1,6 +1,6 @@
 # Alfred Core Roadmap
 
-**Last Updated:** 2026-02-20
+**Last Updated:** 2026-03-11
 
 ---
 
@@ -15,7 +15,7 @@ Extracted core orchestration from kitchen monorepo into `alfredagain` PyPI packa
 - CRUD executor with Supabase adapter
 - Mode system, conversation memory, prompt assembly
 - Domain scaffold + questionnaire
-- 76 core tests → 164 (2.4.1)
+- 76 core tests → 182 (2.6.1)
 
 ### Test Coverage + LLM Resilience (2.4.1)
 CRUD, pipeline, and act node tests. LLM client retry/timeout configuration.
@@ -34,7 +34,16 @@ Driven by FPL domain integration — the second domain to use core, surfacing ga
 - **Bug fixes** (2.3.1–2.3.2) — `not_in` multi-value filter fix, `order_dir` default `"desc"`, sorting params in crud.md.
 - **Act prompt architecture** (2.4.0) — CRUD scoped to read/write only, custom tools independent for any tool-enabled step. `get_crud_reference()` + `get_act_step_template()` hooks. Generate steps now respect `tools_enabled`.
 
-DomainConfig now: 23 abstract, 50 defaults, 73 total methods.
+DomainConfig now: 23 abstract, 51 defaults, 74 total methods.
+
+### Aggregates + db_analyze (2.5.0 – 2.6.1)
+
+- **Aggregate queries** (2.5.0) — `aggregate`/`aggregate_field` params on `db_read` for count/sum/avg/count_distinct.
+- **Auto-prepend `id`** (2.5.1) — `db_read` auto-prepends `id` to column selection to prevent entity tracking breakage.
+- **`db_analyze` tool** (2.6.0) — New dedicated tool for analytical queries. Replaces aggregates on `db_read`. Supports count/sum/avg/min/max with GROUP BY, order_by + limit for "top N" queries. Analyze steps tool-enabled by default.
+- **count() parens fix** (2.6.1) — `count` → `count()` in PostgREST select clause. Fixes GROUP BY compatibility on PostgREST v12+.
+
+DomainConfig: 23 abstract, 51 defaults, 74 total methods (unchanged since 2.4.0 era).
 
 ---
 
