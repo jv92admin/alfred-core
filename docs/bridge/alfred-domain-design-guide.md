@@ -260,6 +260,40 @@ A READ step can call a pre-built function that returns pre-computed data.
 Design your RPCs around common query patterns in your domain. This keeps READ
 fast and ANALYZE focused on interpretation rather than computation.
 
+**Designing for analytical queries.** When speccing your domain, think about what
+*number questions* your users will ask. These drive analyze steps with `db_analyze`:
+
+- **Counts:** "How many X do I have?" → works on any table, zero config
+- **Sums/Averages:** "Total value of Y?", "Average Z per item?" → needs a numeric column
+- **Grouped breakdowns:** "Totals by category", "Counts by status" → needs a groupable column
+- **Top-N:** "Biggest 5 deals", "Most expensive items" → group_by + order_by + limit
+- **Period comparisons:** "This month vs last month" → Think plans multiple analyze steps (one per period) + a reasoning step for the arithmetic
+
+You get all of this for free from `db_analyze` — no custom tools, no RPCs, no domain code.
+The LLM sees your schema and builds the right query. Your job is to ensure your schema
+has the columns that make these queries meaningful (e.g., a `status` column to group by,
+a `created_at` column for time-based filtering, a `value` column to sum).
+
+**What you DON'T need to build:**
+- Custom RPCs for simple counts/sums/averages — `db_analyze` handles these natively
+- Percentage comparison tools — the LLM does arithmetic in reasoning steps
+- Custom `get_tool_enabled_step_types()` overrides just to enable analyze — it's the default
+
+**What you STILL need RPCs for:**
+- Multi-table joins (e.g., "total spend by recipe category" joining 3 tables)
+- Window functions (ranking, running totals, percentiles)
+- Domain-specific scoring algorithms
+
+**Kitchen examples of analytical patterns:**
+
+| Subdomain | User Says | What Happens |
+|-----------|-----------|-------------|
+| inventory | "how many items do I have?" | `db_analyze`: count on inventory |
+| inventory | "total quantity by category?" | `db_analyze`: sum quantity, group_by category |
+| recipes | "what's my average cook time?" | `db_analyze`: avg cook_time on recipes |
+| meal_plans | "how many meals planned this week vs last?" | Two `db_analyze` steps (one per week) + reasoning step for comparison |
+| shopping | "top 5 most-bought ingredients?" | `db_analyze`: count, group_by ingredient, order_by count, limit 5 |
+
 **Kitchen examples of read patterns by subdomain:**
 
 | Subdomain | User Says | What Read Does |
