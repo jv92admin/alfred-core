@@ -64,7 +64,7 @@ Act dispatches each step according to its pattern — loading pattern-specific t
 
 | Doc | Covers |
 |-----|--------|
-| [core-domain-architecture.md](core-domain-architecture.md) | Two-package split, DomainConfig protocol (66 methods), registration, import boundary |
+| [core-domain-architecture.md](core-domain-architecture.md) | Two-package split, DomainConfig protocol (74 methods), registration, import boundary |
 | [core-public-api.md](core-public-api.md) | Entry points, capabilities table, extension points, multi-repo extraction path |
 | [injection-map.md](injection-map.md) | Every domain knob, dial, and toggle — organized by what it affects (reasoning, UI, capabilities) |
 | [domain-implementation-guide.md](domain-implementation-guide.md) | Step-by-step guide to building a new domain (FPL worked example) |

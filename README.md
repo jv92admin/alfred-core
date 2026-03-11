@@ -55,7 +55,7 @@ response, conversation = await run_alfred(
 
 ## Architecture
 
-Core is fully domain-agnostic. It never imports any domain package. Domains implement `DomainConfig` (66 methods — 23 abstract, 43 with defaults) and call `register_domain()`.
+Core is fully domain-agnostic. It never imports any domain package. Domains implement `DomainConfig` (74 methods — 23 abstract, 51 with defaults) and call `register_domain()`.
 
 See `docs/architecture/` for detailed documentation:
 - `overview.md` — Architecture index + pipeline diagram

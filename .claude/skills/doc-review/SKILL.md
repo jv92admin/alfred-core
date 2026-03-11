@@ -40,6 +40,10 @@ These are the authoritative architecture docs. Take time, spin up sub-agents for
 6. If test count changed, update `testing.md`
 7. If a new doc was added, update the index table in `overview.md`
 8. Use sub-agents to grep for outdated references (old method names, removed features, wrong counts)
+9. **Cross-reference counts**: Grep the entire repo for numeric counts that appear in multiple docs (DomainConfig method count, test count, template line counts). Verify they match the actual source of truth (code or test runner). Key counts to check:
+   - DomainConfig methods: count `def` in `base.py` DomainConfig class → verify against CLAUDE.md, README.md, core-domain-architecture.md, overview.md
+   - Test count: run `pytest --co -q` or count test methods → verify against testing.md, overview.md
+   - Template line counts: `wc -l` on templates → verify against prompt-assembly.md
 
 **Standard:** These docs must match the code exactly. Flag any discrepancy.
 
@@ -64,6 +68,7 @@ These are what domain implementers read. Review AFTER Tier 1 since Tier 1 change
 3. If default prompt behavior changed → update `injection-map.md` (default column)
 4. If a new doc was created → update `NEW-DOMAIN-START-HERE.md` reading path
 5. Check `README.md` version references match `pyproject.toml`
+6. **Design-level guidance**: If a new capability was added (new tool, new step type behavior, new default), check if `alfred-domain-design-guide.md` needs a section explaining how domain owners should *think about* and *design for* that capability — not just API reference, but "what patterns does this enable for your users?"
 
 **Standard:** A new domain developer should be able to follow these docs without hitting surprises.
 
