@@ -308,7 +308,7 @@ class TestDbAnalyze:
                 user_id="user-1",
             )
         assert result == [{"count": 5}]
-        mock_db.table().select.assert_called_once_with("count")
+        mock_db.table().select.assert_called_once_with("count()")
 
     async def test_count_with_field(self):
         mock_db = make_mock_db(data=[{"count": 4}])
@@ -391,7 +391,7 @@ class TestDbAnalyze:
                 user_id="user-1",
             )
         assert len(result) == 2
-        mock_db.table().select.assert_called_once_with("count,status")
+        mock_db.table().select.assert_called_once_with("count(),status")
 
     async def test_filters_applied(self):
         mock_db = make_mock_db(data=[{"count": 3}])

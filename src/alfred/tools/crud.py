@@ -291,7 +291,7 @@ async def db_analyze(params: DbAnalyzeParams, user_id: str) -> list[dict]:
 
     # Build SELECT clause
     if params.aggregate == "count" and not params.aggregate_field:
-        agg_part = "count"
+        agg_part = "count()"
     else:
         field = params.aggregate_field or "id"
         agg_part = f"{field}.{params.aggregate}()"

@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.6.1] — 2026-03-11
+
+### Fixed
+- **`db_analyze` count with GROUP BY** — `count` without parens caused PostgREST 400 errors when combined with `group_by`. Now generates `count()` which works in all contexts (solo and grouped). Fixes PostgREST v12+ auto-GROUP BY support.
+
 ## [2.6.0] — 2026-03-10
 
 ### Added
