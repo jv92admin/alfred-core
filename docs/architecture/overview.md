@@ -73,6 +73,6 @@ Act dispatches each step according to its pattern — loading pattern-specific t
 
 | Doc | Covers |
 |-----|--------|
-| [testing.md](testing.md) | Test suite structure, coverage map (164 tests), mock strategies, shared infrastructure |
+| [testing.md](testing.md) | Test suite structure, coverage map (182 tests), mock strategies, shared infrastructure |
 | [capabilities.md](capabilities.md) | User-facing capabilities and API surface |
 | [../ROADMAP.md](../ROADMAP.md) | Active work, recently completed, backlog |

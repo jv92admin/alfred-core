@@ -33,10 +33,10 @@ The core ships 11 prompt templates (~1,635 lines) plus inline prompts in each no
 | `understand.md` | Reference resolution logic, entity curation rules, quick-mode detection protocol |
 | `think.md` | Step-type taxonomy (read/write/analyze/generate), plan structure, decision types (plan_direct/propose/clarify) |
 | `act/base.md` | Execution engine role, one-action-per-response rule, step ownership |
-| `act/crud.md` | `db_read`/`db_create`/`db_update`/`db_delete` parameter syntax (incl. aggregate params) |
-| `act/read.md` | Filter construction, aggregate functions (count/sum/avg/count_distinct), empty result handling |
+| `act/crud.md` | `db_read`/`db_create`/`db_update`/`db_delete`/`db_analyze` parameter syntax |
+| `act/read.md` | Filter construction, empty result handling |
 | `act/write.md` | FK handling, batch operations, linked record creation |
-| `act/analyze.md` | Reasoning patterns over in-context data |
+| `act/analyze.md` | `db_analyze` tool (count/sum/avg/min/max + GROUP BY), reasoning over prior data |
 | `act/generate.md` | Artifact structure, `gen_*` ref tagging, quality principles |
 | `reply.md` | Editorial principles, phase-appropriate tone, formatting guidelines |
 | `summarize.md` | Turn compression rules, engagement summary protocol |
@@ -544,7 +544,7 @@ Custom tools let a domain give the LLM capabilities beyond CRUD. Two methods con
 | Method | Default | What It Controls |
 |--------|---------|------------------|
 | `get_custom_tools()` | `{}` | Tool definitions + handlers. `dict[str, ToolDefinition]` |
-| `get_tool_enabled_step_types()` | `{"read", "write"}` | Which step types have tool access at all. Override to include `"analyze"` and/or `"generate"`. |
+| `get_tool_enabled_step_types()` | `{"read", "write", "analyze"}` | Which step types have tool access at all. Override to include `"generate"` for tool-enabled generation. |
 
 ```python
 @dataclass

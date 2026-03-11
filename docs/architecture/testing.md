@@ -44,9 +44,9 @@ The mock DB adapter supports the complete PostgREST query builder chain: `select
 
 ## Coverage Map
 
-176 tests across 11 test files.
+182 tests across 11 test files.
 
-### CRUD Engine — `test_crud.py` (63 tests)
+### CRUD Engine — `test_crud.py` (69 tests)
 
 Tests `src/alfred/tools/crud.py` — the execution layer every domain hits on every turn.
 
@@ -54,7 +54,7 @@ Tests `src/alfred/tools/crud.py` — the execution layer every domain hits on ev
 |-------|-------|---------------|
 | `TestApplyFilter` | 16 | All 14 filter operators map to correct PostgREST methods; unknown operator raises `ValueError` |
 | `TestDbRead` | 11 | Column selection, ordering (asc/desc), limit, user-owned auto-filter, AND/OR filters, middleware hooks (`short_circuit_empty`, `pre_filter_ids`, `post_read`) |
-| `TestDbReadAggregates` | 12 | count/sum/avg/count_distinct SELECT clause, filters with aggregates, validation (columns mutual exclusion, required aggregate_field), order/limit silently skipped, user_id auto-filter, registry passthrough (no ref assignment) |
+| `TestDbAnalyze` | 18 | count/sum/avg/min/max SELECT clause, group_by, count+group_by, filters, order_by+limit, validation (required aggregate_field, invalid aggregate, invalid group_by), user_id auto-filter, no entity tracking, or_filters |
 | `TestDbCreate` | 9 | Single/batch insert, `user_id` injection, UUID sanitization (empty→None), NULL byte stripping, middleware (`pre_write`, `deduplicate_batch`) |
 | `TestDbUpdate` | 3 | Filter application, user-owned auto-filter, multiple filters |
 | `TestDbDelete` | 4 | Filter application, user-owned auto-filter, empty filter safety (ValueError for non-user tables, allowed for user-owned) |

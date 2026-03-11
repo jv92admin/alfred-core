@@ -593,14 +593,15 @@ Controls which step types have tool access in Act prompts:
 
 ```python
 def get_tool_enabled_step_types(self) -> set[str]:
-    return {"read", "write", "analyze"}  # Default: {"read", "write"}
+    return {"read", "write", "analyze"}  # This IS the default
 ```
 
-Default: `{"read", "write"}` — only read/write steps have tool access. Override to include `"analyze"` if your domain needs mid-analysis computation (e.g., `run_python` for stats), or `"generate"` if generation needs live data or rendering tools.
+Default: `{"read", "write", "analyze"}` — read/write steps have CRUD tools, analyze steps have `db_analyze`. Override to include `"generate"` if generation needs live data or rendering tools.
 
 What "tool-enabled" means per step type:
 - **read/write**: CRUD tools (`db_read`, `db_create`, etc.) + any custom tools
-- **analyze/generate**: Custom tools only (no CRUD) — these steps don't do database operations
+- **analyze**: `db_analyze` (count/sum/avg/min/max + GROUP BY) + any custom tools — no entity tracking
+- **generate**: Custom tools only (no CRUD) — these steps produce content, not queries
 
 When a step type is tool-enabled, its Act prompt includes tool documentation, database schema, current step tool results, and the tool_call + step_complete decision template. The `step_complete` handler is unchanged — for analyze steps, `decision.data` (the LLM's analysis output) flows downstream regardless of whether tool calls happened during the step.
 

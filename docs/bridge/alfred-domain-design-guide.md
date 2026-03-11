@@ -229,31 +229,27 @@ Read is the most common operation. It's how the LLM gets data to reason about.
 automatically filters by `user_id`. The user only sees their own data. Reference
 tables (shared data like players, ingredients) don't get this scoping.
 
-**Built-in aggregates.** `db_read` supports `aggregate` mode for scalar queries —
-the LLM can ask "how many?", "total of?", "average?" without fetching all rows.
-Set `aggregate` to `count`, `sum`, `avg`, or `count_distinct`, plus `aggregate_field`
-for sum/avg/count_distinct. Filters apply as WHERE before aggregation. Results are
-single-row scalars like `[{"count": 42}]` — no entity refs, no registry tracking.
-Aggregates use PostgREST's column-level syntax (e.g., `.select("quantity.sum()")`),
-which requires **PostgREST 12+** (standard on Supabase projects created after mid-2024).
-Verify your Supabase project's PostgREST version supports this — check Dashboard →
-Settings → API. If you're on an older version, `count` will still work but `sum`/`avg`/
-`count_distinct` may need an RPC fallback.
+**Analytical queries via `db_analyze`.** A separate `db_analyze` tool handles scalar
+queries — the LLM can ask "how many?", "total of?", "average?" without fetching all
+rows. Supports `count`, `sum`, `avg`, `min`, `max` with optional `group_by` for
+grouped results (e.g., totals by category). Results are raw scalars like `[{"count": 42}]`
+or grouped rows like `[{"rep": "Alice", "sum": 80000}]` — no entity refs, no registry
+tracking. Available in `analyze` steps (not read steps). Uses PostgREST v12+ aggregate
+syntax, which requires **PostgREST 12+** (standard on Supabase projects created after mid-2024).
 
 ```
 "How many active recipes do I have?"
-  → db_read: table="recipes", filters=[status=active], aggregate="count"
+  → db_analyze: table="recipes", filters=[status=active], aggregate="count"
   → [{"count": 15}]
 
-"What's my total inventory quantity?"
-  → db_read: table="inventory", aggregate="sum", aggregate_field="quantity"
-  → [{"sum": 340}]
+"Total inventory by category?"
+  → db_analyze: table="inventory", aggregate="sum", aggregate_field="quantity", group_by="category"
+  → [{"category": "produce", "sum": 120}, {"category": "dairy", "sum": 80}]
 ```
 
-**Smart reads via RPCs.** For more complex aggregation (GROUP BY, multi-table joins,
-ranking), the database adapter supports RPCs (stored procedures). A READ step can
-call a pre-built function that returns pre-computed data. This is the line of defense
-for queries that go beyond what simple aggregates cover.
+**Smart reads via RPCs.** For queries beyond what `db_analyze` covers (multi-table
+joins, window functions, ranking), the database adapter supports RPCs (stored procedures).
+A READ step can call a pre-built function that returns pre-computed data.
 
 ```
 "Show top midfielders by expected goals this season"

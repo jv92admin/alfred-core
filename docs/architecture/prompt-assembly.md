@@ -53,13 +53,13 @@ Core templates live in `src/alfred/prompts/templates/`:
 | `summarize.md` | 166 | Summarize node: history management, turn compression, engagement summary rules |
 | `router.md` | 36 | Router node: agent classification (currently single-agent, so minimal) |
 | `act/base.md` | 73 | Act node base: execution engine role, core principles (one action per response, step ownership) |
-| `act/crud.md` | 51 | CRUD tools reference: db_read/db_create/db_update/db_delete parameters, filter operators |
-| `act/read.md` | 240 | READ step: query construction, filter patterns, aggregate functions (count/sum/avg/count_distinct), empty result handling |
+| `act/crud.md` | 58 | CRUD tools reference: db_read/db_create/db_update/db_delete/db_analyze parameters, filter operators |
+| `act/read.md` | 174 | READ step: query construction, filter patterns, empty result handling |
 | `act/write.md` | 101 | WRITE step: FK handling, batch operations, linked record creation, error recovery |
-| `act/analyze.md` | 107 | ANALYZE step: reasoning over data from previous steps, analysis patterns (tools: domain-configurable) |
+| `act/analyze.md` | 137 | ANALYZE step: db_analyze tool (count/sum/avg/min/max + GROUP BY), reasoning over prior data |
 | `act/generate.md` | 117 | GENERATE step: entity tagging with `gen_*` refs, quality principles (tools: domain-configurable) |
 
-**Total:** 1,738 lines of core template content.
+**Total:** 1,709 lines of core template content.
 
 ### Act Template Layering
 

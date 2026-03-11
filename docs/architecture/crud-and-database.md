@@ -80,17 +80,29 @@ class DbReadParams(BaseModel):
     limit: int | None = None
     order_by: str | None = None
     order_dir: Literal["asc", "desc"] = "desc"
-
-    # Aggregate mode — mutually exclusive with columns
-    aggregate: Literal["count", "sum", "avg", "count_distinct"] | None = None
-    aggregate_field: str | None = None     # Required for sum/avg/count_distinct
 ```
 
-**Aggregate mode:** When `aggregate` is set, `db_read()` builds an aggregate SELECT (e.g., `.select("count")`, `.select("quantity.sum()")`) instead of fetching rows. Filters still apply as WHERE clauses before aggregation. `columns`, `limit`, and `order_by` are silently ignored. Results are single-row scalars like `[{"count": 42}]` — no entity IDs, no ref translation.
+`db_read` is purely entity-focused: fetch rows, track with refs via SessionIdRegistry. If `columns` is specified without `id`, `id` is auto-prepended to prevent silent entity tracking breakage.
+
+### DbAnalyzeParams (`tools/crud.py:68`)
+
+```python
+class DbAnalyzeParams(BaseModel):
+    table: str
+    aggregate: Literal["count", "sum", "avg", "min", "max"]
+    aggregate_field: str | None = None     # Required for sum/avg/min/max, optional for count
+    filters: list[FilterClause] = []
+    or_filters: list[FilterClause] = []
+    group_by: str | None = None            # PostgREST auto-generates GROUP BY from mixed select
+    order_by: str | None = None
+    order_dir: Literal["asc", "desc"] = "desc"
+    limit: int | None = None
+```
+
+`db_analyze` runs analytical queries — no entity tracking, no middleware, no ref translation. Uses PostgREST aggregate syntax. When `group_by` is set, PostgREST v12+ auto-generates GROUP BY from mixed aggregate/non-aggregate columns in the SELECT clause. Results are raw scalars (`[{"count": 42}]`) or grouped rows (`[{"sales_rep": "Alice", "sum": 500}, ...]`).
 
 Validation:
-- `aggregate` + `columns` → `ValueError` (mutually exclusive)
-- `sum`/`avg`/`count_distinct` without `aggregate_field` → `ValueError`
+- `sum`/`avg`/`min`/`max` without `aggregate_field` → `ValueError`
 
 ### DbCreateParams (`tools/crud.py:68`)
 
@@ -325,7 +337,7 @@ The LLM sees both the ref and the human-readable name.
 |---------|--------------|-----------------|
 | Query building | `apply_filter()`, SELECT/INSERT/UPDATE/DELETE construction | `DatabaseAdapter` (thin wrapper around DB client) |
 | Filter operators | 14 ops mapped to PostgREST methods | — |
-| Aggregates | `count`, `sum`, `avg`, `count_distinct` via aggregate SELECT clause | — (uses standard PostgREST syntax) |
+| Analytical queries | `db_analyze` tool: `count`, `sum`, `avg`, `min`, `max` + GROUP BY via PostgREST v12+ | — (uses standard PostgREST syntax) |
 | User scoping | Auto-inject `user_id` filter/field | `get_user_owned_tables()` — which tables need scoping |
 | UUID sanitization | Empty string → None conversion | `get_uuid_fields()` — which fields are UUIDs |
 | Ref translation | `_translate_input_params()`, `_translate_output()` | — (handled by core SessionIdRegistry) |

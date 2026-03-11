@@ -233,7 +233,7 @@ Act loads different tools, prompts, and context based on the step's `step_type`:
 |---------|----------------|---------------|----------------|--------|
 | `read` | `db_read` | `base.md` + `crud.md` + `read.md` | Schema, prior results | Tool output (rows) |
 | `write` | `db_create`, `db_update`, `db_delete` | `base.md` + `crud.md` + `write.md` | Schema, artifacts, batch manifest | Tool output (confirmation) |
-| `analyze` | Domain-configurable (default: none) | `base.md` + [`crud.md` +] `analyze.md` | Prior step results, profile, guidance | LLM reasoning [+ tool output] |
+| `analyze` | `db_analyze` + domain-configurable | `base.md` + `crud.md` + `analyze.md` | Schema, prior step results, profile, guidance | Tool output (aggregates) + LLM reasoning |
 | `generate` | Domain-configurable (default: none) | `base.md` + [`crud.md` +] `generate.md` | Profile, guidance, prior data | LLM structured content [+ tool output] |
 
 The dispatch happens in `_get_system_prompt(step_type)` at [act.py:338](src/alfred/graph/nodes/act.py#L338) and in `_build_step_type_sections()` at [injection.py:323](src/alfred/prompts/injection.py#L323). When a domain provides full replacement prompts via `get_act_prompt_content(step_type)`, the template layering is bypassed entirely. See [prompt-assembly.md](prompt-assembly.md) for details.
