@@ -28,6 +28,6 @@ None.
 
 ## Shipped
 
-- **Version:** (v2.6.1 — pending release)
-- **Commits:** (pending)
-- **Date:** (pending)
+- **Version:** v2.6.1
+- **Commits:** 9b3bc08
+- **Date:** 2026-03-11
