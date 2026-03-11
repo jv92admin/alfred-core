@@ -72,13 +72,17 @@ Act has access to:
 
 | Type | What Act Does | When to Use |
 |------|---------------|-------------|
-| `read` | Queries database, returns data | **Only** when data is NOT in Active Entities |
+| `read` | Fetches entity rows from database (tracked with refs) | User wants to SEE records, or data is NOT in Active Entities |
 | `write` | Creates, updates, or deletes records | User confirmed, ready to persist |
-| `analyze` | Reasons about data from context | Active Entities has data, need to filter/compare/assess |
+| `analyze` | Runs analytical queries (count/sum/avg/min/max) OR reasons over data from prior steps | User asks a QUESTION about data: "how many", "total", "average", "largest", "compare" |
 | `generate` | Creates new content | Need creative output — **not saved until a separate write step** |
 
+**read vs analyze:**
+- Want to SEE records → `read`. Want a NUMBER about records → `analyze`.
+- Each `db_analyze` call returns one aggregate result. Comparisons (YoY, QoQ, before/after) need multiple analyze steps — one query per period, then a reasoning step to compute the difference.
+
 **Key patterns:**
-- `analyze` can use Active Entities directly → only `read` if data is missing
+- `analyze` can run `db_analyze` for counts/sums/averages, OR reason over data from prior steps — no tool needed for arithmetic
 - `generate` output is shown to user → only `write` after confirmation
 
 **Batch writes in ONE step:**
@@ -165,6 +169,8 @@ When user wants to **change AND save** a `gen_*` artifact, plan **TWO steps**:
 
 | You See | Data Location | Action |
 |---------|--------------|--------|
+| "How many items?" / "Total value?" | Database (needs aggregate) | `analyze` — uses `db_analyze` |
+| "Compare Q1 vs Q2 totals" | Database (needs two aggregates) | Two `analyze` steps (one per period), then a third `analyze` to compare |
 | `gen_item_1` in Generated Content | Act's "Generated Data" | `analyze` or `generate` directly |
 | `item_1` in Active Entities | Act's "Active Entities" | `analyze` directly |
 | `item_5` in Long Term Memory | Database only | Plan `read` first |

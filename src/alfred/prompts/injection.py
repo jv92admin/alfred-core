@@ -432,6 +432,12 @@ def _build_decision_section(step_type: str, tools_enabled: bool = True) -> str:
                 '- Need to create? → `{"action": "tool_call", "tool": "db_create", "params": {"table": "...", "data": {...}}}`',
             ])
 
+        # Analytical tool — analyze steps only
+        if step_type == "analyze":
+            tool_lines.append(
+                '- Run analytical query → `{"action": "tool_call", "tool": "db_analyze", "params": {"table": "...", "aggregate": "count|sum|avg|min|max", "aggregate_field": "...", "group_by": "...", "filters": [...]}}`'
+            )
+
         # Custom tools — any tool-enabled step type
         from alfred.domain import get_current_domain
         custom_tools = get_current_domain().get_custom_tools()

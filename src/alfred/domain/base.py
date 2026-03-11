@@ -492,19 +492,21 @@ class DomainConfig(ABC):
         """
         Step types that have tool access in Act prompts.
 
-        Controls WHEN tools are available. For read/write steps, tools means
-        CRUD (db_read, db_create, etc.) plus any custom tools. For analyze/
-        generate steps, tools means custom tools only (no CRUD).
+        Controls WHEN tools are available:
+        - read/write steps: CRUD tools (db_read, db_create, etc.) + custom tools
+        - analyze steps: db_analyze (analytical queries) + custom tools
+        - generate steps: custom tools only
 
-        Default: {"read", "write"} — only read/write steps have tool access.
-        Override to include "analyze" or "generate" if your domain registers
-        custom tools that those step types need (e.g., FPL's run_python for
-        analysis, fpl_plot for generation).
+        Default: {"read", "write", "analyze"} — analyze steps get db_analyze
+        for aggregate queries (count, sum, avg, min, max + GROUP BY).
+
+        Override to exclude "analyze" if your domain doesn't need analytical
+        queries, or include "generate" for custom generation tools.
 
         Returns:
             Set of step type strings. Valid values: "read", "write", "analyze", "generate".
         """
-        return {"read", "write"}
+        return {"read", "write", "analyze"}
 
     def get_custom_tools(self) -> dict[str, "ToolDefinition"]:
         """

@@ -2,56 +2,95 @@
 
 ## Purpose
 
-Reason over data from previous steps. Make decisions, comparisons, or computations.
+Run analytical queries against the database OR reason over data from previous steps.
 
-You reason over data from previous steps. If tools are available (see below), you may fetch additional data or run computations to support your analysis.
-
----
-
-## How to Execute
-
-1. Read the step description — know what analysis is needed
-2. Look at "Data to Analyze" section — this is your ONLY data source
-3. Perform the analysis (compare, filter, compute, decide)
-4. `step_complete` with your analysis in `data`
+Analyze steps have two modes:
+1. **Query mode** — use `db_analyze` to get counts, sums, averages, min/max from the database
+2. **Reasoning mode** — compute over data from prior steps (percentages, comparisons, differences)
 
 ---
 
-## Data Source
+## db_analyze — Analytical Queries
 
-**CRITICAL: Only use data from "Previous Step Results" or "Data to Analyze"**
+Use `db_analyze` when you need a NUMBER from the database. One aggregate per call.
+
+### Supported Aggregates
+
+| Function | What It Does | Example Use |
+|----------|-------------|-------------|
+| `count` | Count rows | "How many active deals?" |
+| `sum` | Sum a numeric column | "Total deal value?" |
+| `avg` | Average a numeric column | "Average order size?" |
+| `min` | Minimum value | "Cheapest item?" |
+| `max` | Maximum value | "Largest deal?" |
+
+### Parameters
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `table` | Yes | Table to query |
+| `aggregate` | Yes | `count`, `sum`, `avg`, `min`, `max` |
+| `aggregate_field` | For sum/avg/min/max | Column to aggregate |
+| `filters` | No | WHERE filters (same syntax as db_read) |
+| `or_filters` | No | OR-combined filters |
+| `group_by` | No | Column to group results by |
+| `order_by` | No | Column to sort by |
+| `order_dir` | No | `asc` or `desc` (default: `desc`) |
+| `limit` | No | Max rows returned |
+
+### Examples
+
+**Count all rows:**
+```json
+{"table": "deals", "aggregate": "count"}
+```
+→ `[{"count": 42}]`
+
+**Sum with filter:**
+```json
+{"table": "deals", "aggregate": "sum", "aggregate_field": "value",
+ "filters": [{"field": "status", "op": "=", "value": "won"}]}
+```
+→ `[{"sum": 150000}]`
+
+**Group by (totals by category):**
+```json
+{"table": "deals", "aggregate": "sum", "aggregate_field": "value", "group_by": "sales_rep"}
+```
+→ `[{"sales_rep": "Alice", "sum": 80000}, {"sales_rep": "Bob", "sum": 70000}]`
+
+**Top N (largest deals):**
+```json
+{"table": "deals", "aggregate": "max", "aggregate_field": "value",
+ "group_by": "name", "order_by": "max", "order_dir": "desc", "limit": 5}
+```
+
+---
+
+## Reasoning Over Prior Step Data
+
+When prior steps have already fetched data, you can reason over it directly — no tool call needed.
+
+**You can compute percentages, differences, and comparisons directly.** If you have results from prior steps, do the math. No tool needed for arithmetic.
+
+### Common Patterns
+
+| Pattern | How |
+|---------|-----|
+| Compare two values | Prior steps fetched both → compute `(A-B)/A * 100` |
+| Filter a list | Prior step has records → pick the ones matching criteria |
+| Find overlap | Two lists from prior steps → identify common items |
+| Make a decision | Data available → reason and decide |
+
+---
+
+## Data Source Rules
+
+**CRITICAL:** Only use data from "Previous Step Results", "Data to Analyze", or `db_analyze` results.
 
 - If data shows `[]` (empty), report "No data to analyze"
 - Do NOT invent or hallucinate data
 - Do NOT use entity references as data sources — they're only for ID reference
-
----
-
-## Common Analysis Patterns
-
-### Compare Two Lists
-```
-Input: list A, list B
-Output: items in both lists (overlap / duplicates)
-```
-
-### Filter by Criteria
-```
-Input: list of items
-Output: items that match specified criteria or constraints
-```
-
-### Compute Differences
-```
-Input: required items, available items
-Output: items needed that aren't available
-```
-
-### Make Decisions
-```
-Input: available options, requirements
-Output: which options to use, what gaps need new content
-```
 
 ---
 
@@ -60,12 +99,12 @@ Output: which options to use, what gaps need new content
 ```json
 {
   "action": "step_complete",
-  "result_summary": "Found 5 items in both lists",
+  "result_summary": "Total deal value: $150,000 across 42 deals",
   "data": {
-    "matches": [...],
-    "analysis": "..."
+    "total_value": 150000,
+    "deal_count": 42
   },
-  "note_for_next_step": "5 duplicate items to remove"
+  "note_for_next_step": "Total value computed for reply"
 }
 ```
 
@@ -74,13 +113,6 @@ Output: which options to use, what gaps need new content
 ## When You Need User Input
 
 If your analysis hits an ambiguity or requires a decision only the user can make, use `ask_user`. **Always include your partial analysis** — show what you've figured out so far.
-
-**When to ask:**
-- Multiple valid interpretations
-- Missing critical info (dates, quantities, preferences)
-- Trade-offs that need human judgment
-
-**Format:**
 
 ```json
 {
@@ -95,13 +127,11 @@ If your analysis hits an ambiguity or requires a decision only the user can make
 }
 ```
 
-**Key:** Show your work. The user should see what you've analyzed, not just get a question out of context.
-
 ---
 
 ## What NOT to do
 
-- Make tool calls unless tools are explicitly available in this prompt
-- Invent data not shown in previous results
+- Use `db_read` in an analyze step — use `db_analyze` for queries, or reason over prior step data
+- Invent data not shown in previous results or tool results
 - Use "Active Entities" as a data source (only for ID reference)
 - Report analysis on empty data as if data existed

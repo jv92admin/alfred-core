@@ -379,8 +379,9 @@ def _get_system_prompt(step_type: str = "read", tools_enabled: bool = True) -> s
     base = _load_prompt("base.md")
     parts = [base]
 
-    # CRUD reference — read/write only (domain can override)
-    if tools_enabled and step_type in ("read", "write"):
+    # CRUD reference — read/write/analyze (domain can override)
+    # Analyze needs filter syntax + db_analyze reference from crud.md
+    if tools_enabled and step_type in ("read", "write", "analyze"):
         crud = domain.get_crud_reference()
         if not crud:
             crud = _load_prompt("crud.md")
@@ -512,13 +513,21 @@ def _format_step_results(
                     else:
                         lines.append(_summarize_step_data(data, table))
         elif isinstance(result, list):
-            # Detect aggregate result: single row, no 'id' field
-            if (len(result) == 1
+            # Detect analytical result: rows without 'id' field (db_analyze output)
+            if (result
                     and isinstance(result[0], dict)
                     and "id" not in result[0]):
-                agg = result[0]
-                parts = [f"{k}={v}" for k, v in agg.items()]
-                lines.append(f"**Step {step_num}** (aggregate: {', '.join(parts)})")
+                if len(result) == 1:
+                    agg = result[0]
+                    parts = [f"{k}={v}" for k, v in agg.items()]
+                    lines.append(f"**Step {step_num}** (aggregate: {', '.join(parts)})")
+                else:
+                    lines.append(f"**Step {step_num}** (analytical: {len(result)} groups):")
+                    for row in result[:10]:
+                        parts = [f"{k}={v}" for k, v in row.items()]
+                        lines.append(f"  {', '.join(parts)}")
+                    if len(result) > 10:
+                        lines.append(f"  ... and {len(result) - 10} more groups")
             else:
                 table = domain.infer_table_from_record(result[0]) if result else None
                 lines.append(f"**Step {step_num}** ({len(result)} records):")
@@ -713,16 +722,26 @@ def _format_current_step_results(tool_results: list[tuple], tool_calls_made: int
         lines.append(f"### Tool Call {i}: `{tool_name}`{table_label}")
         
         # Show result with semantic meaning
-        if tool_name == "db_read":
-            if isinstance(result, list):
-                # Detect aggregate result: single row, no 'id' field
-                if (len(result) == 1
-                        and isinstance(result[0], dict)
-                        and "id" not in result[0]):
+        if tool_name == "db_analyze":
+            if isinstance(result, list) and result:
+                if len(result) == 1:
                     agg = result[0]
                     parts = [f"**{k}**: {v}" for k, v in agg.items()]
-                    lines.append(f"**Aggregate result:** {', '.join(parts)}")
-                elif len(result) == 0:
+                    lines.append(f"**Analytical result:** {', '.join(parts)}")
+                else:
+                    lines.append(f"**Analytical result ({len(result)} groups):**")
+                    for row in result[:20]:
+                        parts = [f"{k}: {v}" for k, v in row.items()]
+                        lines.append(f"  {', '.join(parts)}")
+                    if len(result) > 20:
+                        lines.append(f"  ... and {len(result) - 20} more groups")
+            elif isinstance(result, list) and not result:
+                lines.append("**Analytical result: no data.**")
+            else:
+                lines.append(f"Result: `{result}`")
+        elif tool_name == "db_read":
+            if isinstance(result, list):
+                if len(result) == 0:
                     lines.append("**Result: 0 records found.**")
                     lines.append("→ Empty result. If step goal is READ: this is your answer. If step goal is ADD/CREATE: proceed with db_create.")
                 else:
@@ -1349,6 +1368,7 @@ async def act_node(state: AlfredState) -> dict:
     # LLM must explicitly call step_complete to advance
     if decision.action == "tool_call" and decision.tool and decision.params:
         BUILTIN_CRUD = {"db_read", "db_create", "db_update", "db_delete"}
+        BUILTIN_ANALYZE = {"db_analyze"}
         custom_tools = get_current_domain().get_custom_tools()
 
         # V4 CONSOLIDATION: Load SESSION ID registry - single source of truth
@@ -1491,6 +1511,30 @@ async def act_node(state: AlfredState) -> dict:
                     ),
                 }
 
+        elif decision.tool in BUILTIN_ANALYZE:
+            # === Built-in analytical query — no registry, no middleware ===
+            try:
+                result = await execute_crud(
+                    tool=decision.tool,
+                    params=decision.params,
+                    user_id=user_id,
+                )
+                table_name = decision.params.get("table", "unknown")
+                new_tool_results = current_step_tool_results + [(decision.tool, table_name, result)]
+                return {
+                    "pending_action": ToolCallAction(tool=decision.tool, params=decision.params),
+                    "current_step_tool_results": new_tool_results,
+                    "id_registry": session_registry.to_dict(),
+                }
+            except Exception as e:
+                return {
+                    "pending_action": BlockedAction(
+                        reason_code="TOOL_FAILURE",
+                        details=f"Analytical query failed: {str(e)}",
+                        suggested_next="replan",
+                    ),
+                }
+
         elif decision.tool in custom_tools:
             # === Custom tool dispatch — domain owns execution ===
             tool_def = custom_tools[decision.tool]
@@ -1522,7 +1566,7 @@ async def act_node(state: AlfredState) -> dict:
 
         else:
             # === Unknown tool — blocked ===
-            available = sorted(BUILTIN_CRUD | set(custom_tools.keys()))
+            available = sorted(BUILTIN_CRUD | BUILTIN_ANALYZE | set(custom_tools.keys()))
             return {
                 "pending_action": BlockedAction(
                     reason_code="TOOL_FAILURE",

@@ -6,6 +6,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.6.0] — 2026-03-10
+
+### Added
+- **`db_analyze` tool** — new core built-in for analytical queries. Supports `count`, `sum`, `avg`, `min`, `max` aggregates with `group_by` for grouped results (PostgREST v12+ auto-generates GROUP BY). Includes `order_by` + `limit` for "top N" queries. Available in analyze steps only — returns raw results, no entity tracking.
+- **Analyze steps now tool-enabled by default** — `get_tool_enabled_step_types()` returns `{"read", "write", "analyze"}`. Analyze steps get schema injection and `db_analyze` access automatically.
+- **Think guidance for read vs analyze** — Think template updated with clear decision rules: "want to SEE records → read, want a NUMBER about records → analyze". Includes multi-step comparison patterns (YoY, QoQ).
+- **Analyze prompt template rewritten** — dual-mode guidance: query mode (db_analyze) and reasoning mode (arithmetic over prior step data). Includes full parameter reference and examples.
+- **18 new db_analyze tests** — count/sum/avg/min/max, group_by, filters, order_by + limit, validation, user_id auto-filter, no entity tracking, OR filters.
+
+### Removed (Breaking)
+- **`aggregate` and `aggregate_field` params removed from `db_read`** — aggregate queries now use `db_analyze` instead. `db_read` is purely entity-focused (fetch rows, track with refs). The `count_distinct` function is also removed.
+- **Aggregate detection heuristic in Act result formatting** — replaced with tool-name-based detection. Multi-row grouped results now format correctly.
+
+### Changed
+- **CRUD reference loaded for analyze steps** — analyze steps now see filter syntax and tool reference docs.
+- **Act node tool dispatch** — new `BUILTIN_ANALYZE` set alongside `BUILTIN_CRUD` for clean separation.
+
 ## [2.5.1] — 2026-03-09
 
 ### Fixed

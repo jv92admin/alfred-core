@@ -2,12 +2,13 @@
 
 ## Tools
 
-| Tool | Purpose | Params |
-|------|---------|--------|
-| `db_read` | Fetch rows or aggregate | `table`, `filters`, `or_filters`, `columns`, `limit`, `order_by`, `order_dir`, `aggregate`, `aggregate_field` |
-| `db_create` | Insert row(s) | `table`, `data` (dict or array of dicts) |
-| `db_update` | Modify rows | `table`, `filters`, `data` (dict, applied to ALL matches) |
-| `db_delete` | Remove rows | `table`, `filters` |
+| Tool | Purpose | Available In | Params |
+|------|---------|-------------|--------|
+| `db_read` | Fetch entity rows (tracked with refs) | read, write | `table`, `filters`, `or_filters`, `columns`, `limit`, `order_by`, `order_dir` |
+| `db_create` | Insert row(s) | read, write | `table`, `data` (dict or array of dicts) |
+| `db_update` | Modify rows | read, write | `table`, `filters`, `data` (dict, applied to ALL matches) |
+| `db_delete` | Remove rows | read, write | `table`, `filters` |
+| `db_analyze` | Analytical query (aggregate + GROUP BY) | analyze | `table`, `aggregate`, `aggregate_field`, `filters`, `or_filters`, `group_by`, `order_by`, `order_dir`, `limit` |
 
 ---
 
@@ -35,7 +36,7 @@ Each filter: `{"field": "...", "op": "...", "value": "..."}`
 
 ---
 
-## Sorting (db_read only)
+## Sorting (db_read and db_analyze)
 
 | Param | Type | Default | Example |
 |-------|------|---------|---------|

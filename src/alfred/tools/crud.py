@@ -64,17 +64,28 @@ class DbReadParams(BaseModel):
     order_by: str | None = None
     order_dir: Literal["asc", "desc"] = "desc"
 
-    # Aggregate mode — mutually exclusive with columns
-    aggregate: Literal["count", "sum", "avg", "count_distinct"] | None = None
-    aggregate_field: str | None = None  # Required for sum/avg/count_distinct
+
+class DbAnalyzeParams(BaseModel):
+    """Parameters for db_analyze — analytical queries (aggregates, GROUP BY).
+
+    Returns raw scalar or grouped results. No entity tracking, no refs.
+    Uses PostgREST aggregate syntax with automatic GROUP BY (v12+).
+    """
+
+    table: str
+    aggregate: Literal["count", "sum", "avg", "min", "max"]
+    aggregate_field: str | None = None  # Required for sum/avg/min/max, optional for count
+    filters: list[FilterClause] = []
+    or_filters: list[FilterClause] = []
+    group_by: str | None = None  # PostgREST auto-generates GROUP BY from mixed select
+    order_by: str | None = None
+    order_dir: Literal["asc", "desc"] = "desc"
+    limit: int | None = None
 
     @model_validator(mode="after")
-    def _validate_aggregate(self):
-        if self.aggregate:
-            if self.columns:
-                raise ValueError("Cannot use 'columns' with 'aggregate' — they are mutually exclusive")
-            if self.aggregate in ("sum", "avg", "count_distinct") and not self.aggregate_field:
-                raise ValueError(f"'{self.aggregate}' requires 'aggregate_field'")
+    def _validate_params(self):
+        if self.aggregate in ("sum", "avg", "min", "max") and not self.aggregate_field:
+            raise ValueError(f"'{self.aggregate}' requires 'aggregate_field'")
         return self
 
 
@@ -184,31 +195,15 @@ async def db_read(params: DbReadParams, user_id: str, middleware=None) -> list[d
         or_conditions_extra = result.or_conditions
 
     # Build SELECT clause
-    is_aggregate = params.aggregate is not None
-    if is_aggregate:
-        match params.aggregate:
-            case "count":
-                if params.aggregate_field:
-                    select_clause = f"{params.aggregate_field}.count()"
-                else:
-                    select_clause = "count"
-            case "sum":
-                select_clause = f"{params.aggregate_field}.sum()"
-            case "avg":
-                select_clause = f"{params.aggregate_field}.avg()"
-            case "count_distinct":
-                # PostgREST: count on a specific column returns distinct-aware count
-                select_clause = f"{params.aggregate_field}.count()"
-    else:
-        if params.columns and "id" not in params.columns:
-            params.columns.insert(0, "id")
-        select_clause = ",".join(params.columns) if params.columns else "*"
+    if params.columns and "id" not in params.columns:
+        params.columns.insert(0, "id")
+    select_clause = ",".join(params.columns) if params.columns else "*"
 
-        # Apply middleware select additions (e.g., nested relations)
-        for addition in select_additions:
-            keyword = addition.split("(")[0]
-            if keyword not in select_clause:
-                select_clause += f", {addition}"
+    # Apply middleware select additions (e.g., nested relations)
+    for addition in select_additions:
+        keyword = addition.split("(")[0]
+        if keyword not in select_clause:
+            select_clause += f", {addition}"
 
     query = client.table(params.table).select(select_clause)
 
@@ -259,12 +254,11 @@ async def db_read(params: DbReadParams, user_id: str, middleware=None) -> list[d
         if or_conditions:
             query = query.or_(",".join(or_conditions))
 
-    # Apply ordering and limit (silently skipped for aggregates)
-    if not is_aggregate:
-        if params.order_by:
-            query = query.order(params.order_by, desc=(params.order_dir == "desc"))
-        if params.limit:
-            query = query.limit(params.limit)
+    # Apply ordering and limit
+    if params.order_by:
+        query = query.order(params.order_by, desc=(params.order_dir == "desc"))
+    if params.limit:
+        query = query.limit(params.limit)
 
     result = query.execute()
     records = result.data
@@ -274,6 +268,79 @@ async def db_read(params: DbReadParams, user_id: str, middleware=None) -> list[d
         records = await middleware.post_read(records, params.table, user_id)
 
     return records
+
+
+async def db_analyze(params: DbAnalyzeParams, user_id: str) -> list[dict]:
+    """
+    Run an analytical query (aggregate + optional GROUP BY).
+
+    Returns raw scalar or grouped results — no entity tracking, no middleware.
+    Uses PostgREST aggregate syntax. GROUP BY is automatic when group_by is set
+    (PostgREST v12+ generates GROUP BY for mixed aggregate/non-aggregate columns).
+
+    Args:
+        params: Analytical query parameters
+        user_id: Current user's ID (auto-applied for user-owned tables)
+
+    Returns:
+        List of result dicts (e.g., [{"count": 42}] or [{"sales_rep": "Alice", "sum": 500}, ...])
+    """
+    client = _get_client()
+    domain = _get_domain()
+    user_owned_tables = domain.get_user_owned_tables()
+
+    # Build SELECT clause
+    if params.aggregate == "count" and not params.aggregate_field:
+        agg_part = "count"
+    else:
+        field = params.aggregate_field or "id"
+        agg_part = f"{field}.{params.aggregate}()"
+
+    if params.group_by:
+        select_clause = f"{agg_part},{params.group_by}"
+    else:
+        select_clause = agg_part
+
+    query = client.table(params.table).select(select_clause)
+
+    # Auto-filter by user_id for user-owned tables
+    if params.table in user_owned_tables:
+        query = query.eq("user_id", user_id)
+
+    # Apply filters
+    for f in params.filters:
+        query = apply_filter(query, f)
+
+    # Apply OR filters
+    if params.or_filters:
+        or_conditions = []
+        for f in params.or_filters:
+            if f.op == "=":
+                or_conditions.append(f"{f.field}.eq.{f.value}")
+            elif f.op == "ilike":
+                or_conditions.append(f"{f.field}.ilike.{f.value}")
+            elif f.op == "in":
+                vals = ",".join(str(v) for v in f.value)
+                or_conditions.append(f"{f.field}.in.({vals})")
+            elif f.op == ">":
+                or_conditions.append(f"{f.field}.gt.{f.value}")
+            elif f.op == "<":
+                or_conditions.append(f"{f.field}.lt.{f.value}")
+            elif f.op == ">=":
+                or_conditions.append(f"{f.field}.gte.{f.value}")
+            elif f.op == "<=":
+                or_conditions.append(f"{f.field}.lte.{f.value}")
+        if or_conditions:
+            query = query.or_(",".join(or_conditions))
+
+    # Apply ordering and limit
+    if params.order_by:
+        query = query.order(params.order_by, desc=(params.order_dir == "desc"))
+    if params.limit:
+        query = query.limit(params.limit)
+
+    result = query.execute()
+    return result.data
 
 
 def _sanitize_uuid_fields(record: dict) -> dict:
@@ -510,6 +577,10 @@ async def execute_crud(
     Returns:
         Tool result (with refs if registry provided, UUIDs otherwise)
     """
+    # db_analyze: no registry translation, no middleware — raw analytical query
+    if tool == "db_analyze":
+        return await db_analyze(DbAnalyzeParams(**params), user_id)
+
     # V8: Read rerouting for gen_* refs (MUST be BEFORE translation!)
     # If reading a gen_* ref that has __pending__ UUID, return from pending_artifacts.
     # This check needs the original refs (gen_recipe_1), not translated UUIDs.
