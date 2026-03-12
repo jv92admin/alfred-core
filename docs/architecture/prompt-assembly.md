@@ -47,7 +47,7 @@ Core templates live in `src/alfred/prompts/templates/`:
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `think.md` | 382 | Think node: step planning, decision types (plan_direct, propose, clarify), step_type definitions, entity handling rules |
+| `think.md` | 388 | Think node: step planning, decision types (plan_direct, propose, clarify), step_type definitions, entity handling rules |
 | `understand.md` | 307 | Understand node: reference resolution, entity curation, quick mode detection, confirmation/rejection signals |
 | `reply.md` | 158 | Reply node: narration rules, editorial principles, formatting guidelines |
 | `router.md` | 36 | Router node: agent classification (currently single-agent, so minimal) |
@@ -58,7 +58,7 @@ Core templates live in `src/alfred/prompts/templates/`:
 | `act/analyze.md` | 172 | ANALYZE step: db_analyze tool (count/sum/avg/min/max + GROUP BY), calculate tool (safe arithmetic), reasoning over prior data |
 | `act/generate.md` | 117 | GENERATE step: entity tagging with `gen_*` refs, quality principles (tools: domain-configurable) |
 
-**Total:** ~1,579 lines of core template content.
+**Total:** ~1,585 lines of core template content.
 
 ### Act Template Layering
 

@@ -44,9 +44,9 @@ The mock DB adapter supports the complete PostgREST query builder chain: `select
 
 ## Coverage Map
 
-182 tests across 11 test files.
+208 tests across 11 test files.
 
-### CRUD Engine — `test_crud.py` (69 tests)
+### CRUD Engine — `test_crud.py` (91 tests)
 
 Tests `src/alfred/tools/crud.py` — the execution layer every domain hits on every turn.
 
@@ -58,6 +58,10 @@ Tests `src/alfred/tools/crud.py` — the execution layer every domain hits on ev
 | `TestDbCreate` | 9 | Single/batch insert, `user_id` injection, UUID sanitization (empty→None), NULL byte stripping, middleware (`pre_write`, `deduplicate_batch`) |
 | `TestDbUpdate` | 3 | Filter application, user-owned auto-filter, multiple filters |
 | `TestDbDelete` | 4 | Filter application, user-owned auto-filter, empty filter safety (ValueError for non-user tables, allowed for user-owned) |
+| `TestSafeEval` | 14 | AST-safe arithmetic: basic ops, floor div, mod, power, negation, nested expressions, float cleanup, division by zero, reject functions/variables/imports/strings/large exponents/long expressions |
+| `TestCalculateParams` | 3 | Validation: valid params, empty rejected, >20 formulas rejected |
+| `TestCalculate` | 4 | Batch evaluation: single formula, multiple formulas, per-formula error handling, syntax errors |
+| `TestExecuteCrudCalculate` | 1 | `execute_crud` dispatches `calculate` correctly |
 | `TestExecuteCrud` | 8 | Dispatch to correct function, unknown tool ValueError, SessionIdRegistry input/output translation, `gen_*` ref rerouting |
 
 ### Act Node — `test_act_node.py` (16 tests)
@@ -90,14 +94,15 @@ Tests `src/alfred/config.py` + `src/alfred/llm/client.py` — timeout and retry 
 | `TestCoreSettingsDefaults` | 4 | `openai_timeout=60`, `openai_max_retries=3`, env var overrides (`OPENAI_TIMEOUT`, `OPENAI_MAX_RETRIES`) |
 | `TestClientConstruction` | 4 | Sync/async clients receive timeout+retries, singleton reuse, singleton reset rebuilds |
 
-### Domain Config — `test_domain_config.py` (22 tests)
+### Domain Config — `test_domain_config.py` (26 tests)
 
 Tests `src/alfred/domain/base.py` — DomainConfig protocol and StubDomainConfig implementation.
 
 | Class | Tests | What it covers |
 |-------|-------|---------------|
 | `TestStubDomainConfig` | 14 | All StubDomainConfig properties and methods: name, entities, subdomains, table↔type mapping, domain registration, bypass modes, default agent, aliases, user-owned tables, UUID fields, entity inference, label computation |
-| `TestDomainConfigDefaults` | 8 | Default implementations of optional methods: CRUD middleware, data legends, detail level, archive keys, entity/record formatting, system prompts, LLM config, think context |
+| `TestDomainConfigDefaults` | 9 | Default implementations of optional methods: CRUD middleware, data legends, detail level, archive keys, entity/record formatting, system prompts, LLM config, think context, reply continuity guidance |
+| `TestReplyContinuityGuidance` | 3 | Default returns core guidance, custom override replaces defaults, empty list suppresses guidance |
 
 ### Supporting Tests
 

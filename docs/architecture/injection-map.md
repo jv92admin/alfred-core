@@ -882,7 +882,7 @@ Quick-lookup table. Every `DomainConfig` method, which node consumes it, and whe
 | `get_priority_fields()` | Reply | No | UI |
 | `get_quick_write_confirmation()` | Reply | No | UI |
 | `get_relevant_entity_types()` | Act, Reply | No | Reasoning |
-| `get_reply_continuity_guidance()` | Reply | No | Reasoning |
+| `get_reply_continuity_guidance(current_turn)` | Reply | No | Reasoning |
 | `get_reply_prompt_content()` | Reply | No | Reasoning |
 | `get_reply_subdomain_guide()` | Reply | No | Reasoning |
 | `get_router_prompt_injection()` | Router | No | Reasoning |

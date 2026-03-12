@@ -75,17 +75,17 @@ src/
 | Schema/FK | 11 | 0 | 11 | Field enums, fallback schemas, scope config, FK enrichment, user-owned tables |
 | CRUD | 0 | 1 | 1 | `get_crud_middleware()` (optional) |
 | Entity processing | 3 | 10 | 13 | Entity labels, type inference, archive keys, tracking, content markers |
-| Reply formatting | 1 | 8 | 9 | Subdomain formatters, strip fields, record formatting (context + reply) |
+| Reply formatting | 1 | 9 | 10 | Subdomain formatters, strip fields, record formatting (context + reply), continuity guidance |
 | Mode/agent | 2 | 4 | 6 | `bypass_modes`, `default_agent`, agents, router, compilers, LLM config |
 | Prompts | 0 | 23 | 23 | System prompt, node-specific content/injection (Think, Act, Reply, Understand, Summarize, Router), tool-enabled step types, custom tools, CRUD reference, step templates, filter schema |
 | User context | 0 | 3 | 3 | `get_user_profile()`, `get_domain_snapshot()`, `get_subdomain_guidance()` |
 | Database | 1 | 0 | 1 | `get_db_adapter()` |
 | Handoff | 1 | 1 | 2 | `get_handoff_result_model()`, `get_handoff_system_prompts()` |
-| **Total** | **23** | **51** | **74** | |
+| **Total** | **23** | **52** | **75** | |
 
-**23 abstract methods** must be implemented. **51 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
+**23 abstract methods** must be implemented. **52 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
 
-> **Note:** The concern area breakdown above may have minor row-level discrepancies — the totals (23/51/74) are verified against the actual code.
+> **Note:** The concern area breakdown above may have minor row-level discrepancies — the totals (23/52/75) are verified against the actual code.
 
 ### Supporting Dataclasses
 
