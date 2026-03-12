@@ -605,6 +605,19 @@ What "tool-enabled" means per step type:
 
 When a step type is tool-enabled, its Act prompt includes tool documentation, database schema, current step tool results, and the tool_call + step_complete decision template. The `step_complete` handler is unchanged — for analyze steps, `decision.data` (the LLM's analysis output) flows downstream regardless of whether tool calls happened during the step.
 
+### Reply Continuity Guidance
+
+Controls how the LLM handles conversational continuity on turn 2+. By default, core tells the LLM to avoid greetings ("no Hello!") and build on prior discussion. Override for different conversational tone:
+
+```python
+def get_reply_continuity_guidance(self, current_turn: int) -> list[str] | None:
+    return [
+        f"- This is turn {current_turn} of an ongoing conversation",
+        "- Be warm and welcoming — greetings are fine in this domain",
+    ]
+    # Return None for core defaults, [] to suppress entirely
+```
+
 ### Custom Tools
 
 Register domain-specific tools via `get_custom_tools()`. Custom tools are dispatched by Act's tool_call handler — core routes by name, the domain owns the handler.
@@ -1027,6 +1040,7 @@ Steps to go from zero to working domain:
 - [ ] `get_entity_recency_window()` override (default: 2 turns)
 - [ ] `get_fk_field_aliases()` for non-standard FK naming
 - [ ] `get_prompt_log_adapter()` for DB-based prompt logging
+- [ ] `get_reply_continuity_guidance()` for custom conversational continuity rules
 - [ ] Full prompt replacement content (Think, Act, Reply, Understand)
 - [ ] `SubdomainCompiler` for artifact→schema mapping
 - [ ] Bypass modes for interactive features

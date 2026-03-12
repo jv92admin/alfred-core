@@ -118,3 +118,38 @@ class TestDomainConfigDefaults:
 
     def test_get_think_domain_context_default(self, stub_domain):
         assert stub_domain.get_think_domain_context() == ""
+
+    def test_get_reply_continuity_guidance_default(self, stub_domain):
+        assert stub_domain.get_reply_continuity_guidance(2) is None
+
+
+class TestReplyContinuityGuidance:
+    """Test reply continuity guidance domain override."""
+
+    def test_default_returns_core_guidance(self, stub_domain):
+        """None from domain → core defaults used in reply."""
+        from alfred.graph.nodes.reply import _build_conversation_flow_section
+        result = _build_conversation_flow_section({}, current_turn=2)
+        assert "Continuity guidance" in result
+        assert "turn 2" in result
+        assert "don't introduce yourself" in result
+
+    def test_custom_override(self, stub_domain):
+        """Domain returns custom list → those lines appear instead."""
+        from alfred.graph.nodes.reply import _build_conversation_flow_section
+        stub_domain.get_reply_continuity_guidance = lambda t: [
+            "- Custom rule A",
+            "- Custom rule B for turn {}".format(t),
+        ]
+        result = _build_conversation_flow_section({}, current_turn=3)
+        assert "Continuity guidance" in result
+        assert "Custom rule A" in result
+        assert "Custom rule B for turn 3" in result
+        assert "don't introduce yourself" not in result
+
+    def test_empty_list_suppresses_guidance(self, stub_domain):
+        """Empty list from domain → no guidance section at all."""
+        from alfred.graph.nodes.reply import _build_conversation_flow_section
+        stub_domain.get_reply_continuity_guidance = lambda t: []
+        result = _build_conversation_flow_section({}, current_turn=2)
+        assert "Continuity guidance" not in result

@@ -64,7 +64,7 @@ src/
 
 ## 2. The DomainConfig Protocol
 
-`DomainConfig` at [base.py:156](src/alfred/domain/base.py#L156) is an ABC that every domain must implement. It has **74 methods** organized into 8 concern areas:
+`DomainConfig` at [base.py:156](src/alfred/domain/base.py#L156) is an ABC that every domain must implement. It has **75 methods** organized into 8 concern areas:
 
 ### Method Census
 
@@ -320,7 +320,7 @@ Four protocols define the extension surface:
 
 **File:** [domain/base.py:156](src/alfred/domain/base.py#L156) (1,135 lines)
 
-The central protocol. 74 methods across 8 concern areas (see section 2). A domain implements this to plug into Alfred's pipeline.
+The central protocol. 75 methods across 8 concern areas (see section 2). A domain implements this to plug into Alfred's pipeline.
 
 ### DatabaseAdapter
 

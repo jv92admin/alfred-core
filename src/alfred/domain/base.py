@@ -494,11 +494,12 @@ class DomainConfig(ABC):
 
         Controls WHEN tools are available:
         - read/write steps: CRUD tools (db_read, db_create, etc.) + custom tools
-        - analyze steps: db_analyze (analytical queries) + custom tools
+        - analyze steps: db_analyze (analytical queries) + calculate (safe arithmetic) + custom tools
         - generate steps: custom tools only
 
         Default: {"read", "write", "analyze"} — analyze steps get db_analyze
-        for aggregate queries (count, sum, avg, min, max + GROUP BY).
+        for aggregate queries (count, sum, avg, min, max + GROUP BY) and
+        calculate for safe arithmetic evaluation.
 
         Override to exclude "analyze" if your domain doesn't need analytical
         queries, or include "generate" for custom generation tools.
@@ -1301,6 +1302,20 @@ class DomainConfig(ABC):
             Markdown string with planning guide content.
         """
         return ""  # Default: no domain-specific planning guide
+
+    def get_reply_continuity_guidance(self, current_turn: int) -> list[str] | None:
+        """
+        Get domain-specific continuity guidance for Reply node on turn 2+.
+
+        Called when current_turn > 1 to guide the LLM on how to handle
+        multi-turn conversation continuity (e.g., avoiding greetings,
+        building on prior discussion).
+
+        Returns:
+            List of guidance strings to include in the prompt,
+            None to use core defaults, or empty list to suppress entirely.
+        """
+        return None  # Default: use core continuity guidance
 
     def get_reply_subdomain_guide(self) -> str:
         """

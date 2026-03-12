@@ -36,7 +36,7 @@ mypy src/
 
 | File | Role |
 |------|------|
-| `src/alfred/domain/base.py` | DomainConfig protocol (74 methods) |
+| `src/alfred/domain/base.py` | DomainConfig protocol (75 methods) |
 | `src/alfred/domain/__init__.py` | `register_domain()`, `get_current_domain()` |
 | `src/alfred/graph/workflow.py` | Entry points: `run_alfred()`, `run_alfred_streaming()` |
 | `src/alfred/core/id_registry.py` | SessionIdRegistry — UUID ↔ ref translation |

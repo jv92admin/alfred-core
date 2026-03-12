@@ -127,12 +127,31 @@ def _build_conversation_flow_section(conversation: dict, current_turn: int) -> s
             if last_summary.user_expressed:
                 lines.append(f"**User expressed:** {last_summary.user_expressed}")
         
-        # Continuity guidance
-        lines.append("")
-        lines.append("**Continuity guidance:**")
-        lines.append("- This is turn {}, not the start of a conversation".format(current_turn))
-        lines.append("- Acknowledge naturally (\"Got it\", \"Sure\", etc.) — no \"Hello!\" or \"I'd be happy to help\"")
-        lines.append("- Build on what was discussed, don't introduce yourself")
+        # Continuity guidance (domain-customizable)
+        try:
+            from alfred.domain import get_current_domain
+            domain = get_current_domain()
+            custom_guidance = domain.get_reply_continuity_guidance(current_turn)
+        except Exception:
+            import logging
+            logging.getLogger("alfred.reply").warning(
+                "Failed to get domain continuity guidance, using defaults"
+            )
+            custom_guidance = None
+
+        if custom_guidance is not None:
+            guidance_lines = custom_guidance
+        else:
+            guidance_lines = [
+                "- This is turn {}, not the start of a conversation".format(current_turn),
+                "- Acknowledge naturally (\"Got it\", \"Sure\", etc.) — no \"Hello!\" or \"I'd be happy to help\"",
+                "- Build on what was discussed, don't introduce yourself",
+            ]
+
+        if guidance_lines:
+            lines.append("")
+            lines.append("**Continuity guidance:**")
+            lines.extend(guidance_lines)
     
     return "\n".join(lines) if lines else ""
 
