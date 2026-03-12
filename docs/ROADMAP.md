@@ -34,7 +34,7 @@ Driven by FPL domain integration — the second domain to use core, surfacing ga
 - **Bug fixes** (2.3.1–2.3.2) — `not_in` multi-value filter fix, `order_dir` default `"desc"`, sorting params in crud.md.
 - **Act prompt architecture** (2.4.0) — CRUD scoped to read/write only, custom tools independent for any tool-enabled step. `get_crud_reference()` + `get_act_step_template()` hooks. Generate steps now respect `tools_enabled`.
 
-DomainConfig now: 23 abstract, 51 defaults, 74 total methods.
+DomainConfig now: 23 abstract, 52 defaults, 75 total methods.
 
 ### Aggregates + db_analyze (2.5.0 – 2.6.1)
 
@@ -43,7 +43,7 @@ DomainConfig now: 23 abstract, 51 defaults, 74 total methods.
 - **`db_analyze` tool** (2.6.0) — New dedicated tool for analytical queries. Replaces aggregates on `db_read`. Supports count/sum/avg/min/max with GROUP BY, order_by + limit for "top N" queries. Analyze steps tool-enabled by default.
 - **count() parens fix** (2.6.1) — `count` → `count()` in PostgREST select clause. Fixes GROUP BY compatibility on PostgREST v12+.
 
-DomainConfig: 23 abstract, 51 defaults, 74 total methods (unchanged since 2.4.0 era).
+DomainConfig: 23 abstract, 52 defaults, 75 total methods (unchanged since 2.4.0 era).
 
 ---
 
@@ -60,12 +60,12 @@ Act's `should_continue_act()` routes all `BlockedAction` to `"reply"`. The `sugg
 ### P3 — Auto-Generate Tool Param Schema
 Domain Act prompts reverse-engineer param names from Pydantic models. Could auto-generate a param reference from `DbReadParams.model_json_schema()` and inject it alongside `crud.md`. Would make it impossible for domain prompts to teach wrong param names.
 
-### P4 — Summarize Template Domain Hook
-`summarize.md` is an informational template (contracts, not examples). No `get_summarize_prompt_content()` method exists to override it. Low priority — system prompts already have domain hooks via `get_summarize_system_prompts()`.
+### P4 — Summarize Template Domain Hook ✅
+Resolved: `summarize.md` was moved to `docs/contracts/summarize-node.md` (it was a contracts doc, not a prompt template). Summarize uses 4 inline prompts, each individually overridable via `get_summarize_system_prompts()`.
 
 ### P5 — Kitchen Content Audit
 Systematic sweep of all prompt templates and constants for kitchen-specific language. Known items:
-- `summarize.md` examples mention recipe names (cosmetic)
+- `summarize.md` moved to `docs/contracts/summarize-node.md` (contracts doc, no kitchen-specific examples)
 - `FILTER_SCHEMA` default still has kitchen examples (overridable via hook)
 - `tools/schema.py` `__getattr__` lazy constants
 
