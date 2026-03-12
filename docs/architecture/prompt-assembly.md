@@ -50,16 +50,15 @@ Core templates live in `src/alfred/prompts/templates/`:
 | `think.md` | 382 | Think node: step planning, decision types (plan_direct, propose, clarify), step_type definitions, entity handling rules |
 | `understand.md` | 307 | Understand node: reference resolution, entity curation, quick mode detection, confirmation/rejection signals |
 | `reply.md` | 158 | Reply node: narration rules, editorial principles, formatting guidelines |
-| `summarize.md` | 166 | Summarize node: history management, turn compression, engagement summary rules |
 | `router.md` | 36 | Router node: agent classification (currently single-agent, so minimal) |
 | `act/base.md` | 73 | Act node base: execution engine role, core principles (one action per response, step ownership) |
-| `act/crud.md` | 58 | CRUD tools reference: db_read/db_create/db_update/db_delete/db_analyze parameters, filter operators |
+| `act/crud.md` | 59 | CRUD tools reference: db_read/db_create/db_update/db_delete/db_analyze/calculate parameters, filter operators |
 | `act/read.md` | 174 | READ step: query construction, filter patterns, empty result handling |
 | `act/write.md` | 101 | WRITE step: FK handling, batch operations, linked record creation, error recovery |
-| `act/analyze.md` | 137 | ANALYZE step: db_analyze tool (count/sum/avg/min/max + GROUP BY), reasoning over prior data |
+| `act/analyze.md` | 172 | ANALYZE step: db_analyze tool (count/sum/avg/min/max + GROUP BY), calculate tool (safe arithmetic), reasoning over prior data |
 | `act/generate.md` | 117 | GENERATE step: entity tagging with `gen_*` refs, quality principles (tools: domain-configurable) |
 
-**Total:** 1,709 lines of core template content.
+**Total:** ~1,579 lines of core template content.
 
 ### Act Template Layering
 
@@ -229,6 +228,7 @@ Reply is unique: it uses **two** prompts. The system prompt is the domain's iden
 - `get_system_prompt()` → identity statement ([base.py:735](src/alfred/domain/base.py#L735))
 - `get_reply_prompt_content()` → full reply instructions ([base.py:931](src/alfred/domain/base.py#L931))
 - `get_reply_subdomain_guide()` → fills `{domain_subdomain_guide}` placeholder ([base.py:1036](src/alfred/domain/base.py#L1036))
+- `get_reply_continuity_guidance(current_turn)` → per-turn continuity hints for multi-turn conversations. `None` = core defaults, `[]` = suppress, `[...]` = custom.
 
 **Kitchen implementation:** [system.md](src/alfred_kitchen/domain/prompts/system.md) (32 lines) defines Alfred's identity. [reply_content.py](src/alfred_kitchen/domain/prompts/reply_content.py) (299 lines) provides full reply instructions. [reply_guide.py](src/alfred_kitchen/domain/prompts/reply_guide.py) (137 lines) provides the subdomain guide as fallback.
 
@@ -384,8 +384,8 @@ Summary table showing where each node's prompts come from:
 | **Think** | `domain.get_think_prompt_content()` or `think.md` + `{domain_context}` + `{domain_planning_guide}` | 3 XML sections: `<session_context>`, `<conversation_history>`, `<immediate_task>` | `get_think_prompt_content()`, `get_think_domain_context()`, `get_think_planning_guide()`, `get_user_profile()`, `get_domain_snapshot()`, `get_subdomain_guidance()` |
 | **Act** | `domain.get_act_prompt_content(step_type)` or `base.md` + `crud.md` + `{step_type}.md` + injection | 15-section assembly via `build_act_user_prompt()` | `get_act_prompt_content()`, `get_act_prompt_injection()`, `get_act_subdomain_header()`, `get_examples()`, `get_user_profile()`, `get_subdomain_guidance()` |
 | **Act Quick** | `quick_header` + `crud.md` (inline in [injection.py:579-597](src/alfred/prompts/injection.py#L579-L597)) | Simplified 5-section assembly via `build_act_quick_prompt()` | `get_act_subdomain_header()`, `get_persona()` |
-| **Reply** | `domain.get_system_prompt()` (identity) | `domain.get_reply_prompt_content()` or `reply.md` + `{domain_subdomain_guide}` + execution summary | `get_system_prompt()`, `get_reply_prompt_content()`, `get_reply_subdomain_guide()` |
-| **Summarize** | Inline strings (4 different prompts for different tasks) | Inline: constructed from turn data | None |
+| **Reply** | `domain.get_system_prompt()` (identity) | `domain.get_reply_prompt_content()` or `reply.md` + `{domain_subdomain_guide}` + execution summary | `get_system_prompt()`, `get_reply_prompt_content()`, `get_reply_subdomain_guide()`, `get_reply_continuity_guidance()` |
+| **Summarize** | Inline strings (4 different prompts for different tasks) | Inline: constructed from turn data | `get_summarize_system_prompts()` |
 
 ### Kitchen Domain Prompt Files
 
@@ -419,6 +419,6 @@ The kitchen domain provides full-replacement content for most nodes:
 | [src/alfred/graph/nodes/reply.py](src/alfred/graph/nodes/reply.py) | 1,224 | Reply prompt loading (system + instructions) |
 | [src/alfred/graph/nodes/understand.py](src/alfred/graph/nodes/understand.py) | ~200 | Understand prompt loading with domain override |
 | [src/alfred/graph/nodes/router.py](src/alfred/graph/nodes/router.py) | ~80 | Router prompt loading with injection |
-| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig: 12 prompt-related abstract/default methods |
-| [src/alfred/prompts/templates/](src/alfred/prompts/templates/) | 1,738 | Core template files (11 .md files) |
+| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig: 13 prompt-related abstract/default methods |
+| [src/alfred/prompts/templates/](src/alfred/prompts/templates/) | ~1,572 | Core template files (10 .md files) |
 | [src/alfred_kitchen/domain/prompts/](src/alfred_kitchen/domain/prompts/) | 2,443 | Kitchen domain prompt content (8 .py + 3 .md files) |

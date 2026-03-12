@@ -267,7 +267,7 @@ fast and ANALYZE focused on interpretation rather than computation.
 - **Sums/Averages:** "Total value of Y?", "Average Z per item?" → needs a numeric column
 - **Grouped breakdowns:** "Totals by category", "Counts by status" → needs a groupable column
 - **Top-N:** "Biggest 5 deals", "Most expensive items" → group_by + order_by + limit
-- **Period comparisons:** "This month vs last month" → Think plans multiple analyze steps (one per period) + a reasoning step for the arithmetic
+- **Period comparisons:** "This month vs last month" → Think plans multiple analyze steps (one per period) + a `calculate` call for the arithmetic (% change, differences)
 
 You get all of this for free from `db_analyze` — no custom tools, no RPCs, no domain code.
 The LLM sees your schema and builds the right query. Your job is to ensure your schema
@@ -276,7 +276,7 @@ a `created_at` column for time-based filtering, a `value` column to sum).
 
 **What you DON'T need to build:**
 - Custom RPCs for simple counts/sums/averages — `db_analyze` handles these natively
-- Percentage comparison tools — the LLM does arithmetic in reasoning steps
+- Percentage comparison tools — the `calculate` tool handles exact arithmetic in analyze steps
 - Custom `get_tool_enabled_step_types()` overrides just to enable analyze — it's the default
 
 **What you STILL need RPCs for:**
@@ -695,6 +695,13 @@ on making cooking accessible.
 
 Keep it to 1-2 paragraphs. This gets injected as the system prompt in the Reply
 node, so it affects every response the user sees.
+
+You can also fine-tune **conversational continuity** — how the LLM handles
+follow-up turns. By default, core suppresses greetings and re-introductions on
+turn 2+ ("no Hello!", "don't introduce yourself"). If your domain wants a warmer
+tone (e.g., customer support) or stricter rules (e.g., terse CLI assistant),
+override `get_reply_continuity_guidance(current_turn)`. Return `None` for core
+defaults, `[]` to suppress guidance entirely, or a custom list of guidance lines.
 
 ### 1. Entity Definitions
 

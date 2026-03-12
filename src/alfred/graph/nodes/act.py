@@ -739,6 +739,13 @@ def _format_current_step_results(tool_results: list[tuple], tool_calls_made: int
                 lines.append("**Analytical result: no data.**")
             else:
                 lines.append(f"Result: `{result}`")
+        elif tool_name == "calculate":
+            if isinstance(result, dict) and result:
+                lines.append("**Calculated:**")
+                for label, value in result.items():
+                    lines.append(f"  **{label}**: {value}")
+            else:
+                lines.append(f"Result: `{result}`")
         elif tool_name == "db_read":
             if isinstance(result, list):
                 if len(result) == 0:
@@ -1368,7 +1375,7 @@ async def act_node(state: AlfredState) -> dict:
     # LLM must explicitly call step_complete to advance
     if decision.action == "tool_call" and decision.tool and decision.params:
         BUILTIN_CRUD = {"db_read", "db_create", "db_update", "db_delete"}
-        BUILTIN_ANALYZE = {"db_analyze"}
+        BUILTIN_ANALYZE = {"db_analyze", "calculate"}
         custom_tools = get_current_domain().get_custom_tools()
 
         # V4 CONSOLIDATION: Load SESSION ID registry - single source of truth
@@ -1519,7 +1526,7 @@ async def act_node(state: AlfredState) -> dict:
                     params=decision.params,
                     user_id=user_id,
                 )
-                table_name = decision.params.get("table", "unknown")
+                table_name = decision.tool if decision.tool == "calculate" else decision.params.get("table", "unknown")
                 new_tool_results = current_step_tool_results + [(decision.tool, table_name, result)]
                 return {
                     "pending_action": ToolCallAction(tool=decision.tool, params=decision.params),

@@ -16,13 +16,16 @@ from alfred.tools.crud import (
     DbCreateParams,
     DbUpdateParams,
     DbDeleteParams,
+    CalculateParams,
     apply_filter,
     db_read,
     db_analyze,
     db_create,
     db_update,
     db_delete,
+    calculate,
     execute_crud,
+    _safe_eval,
     _sanitize_uuid_fields,
     _sanitize_payload,
 )
@@ -817,3 +820,132 @@ class TestExecuteCrud:
         assert result[0]["name"] == "Test Widget"
         # DB should NOT have been queried
         mock_db.table().execute.assert_not_called()
+
+
+# =============================================================================
+# calculate — safe arithmetic evaluator
+# =============================================================================
+
+
+class TestSafeEval:
+    """_safe_eval: AST-based arithmetic with whitelist."""
+
+    def test_basic_arithmetic(self):
+        assert _safe_eval("2 + 3") == 5.0
+        assert _safe_eval("10 - 4") == 6.0
+        assert _safe_eval("3 * 7") == 21.0
+        assert _safe_eval("10 / 4") == 2.5
+
+    def test_floor_div_and_mod(self):
+        assert _safe_eval("10 // 3") == 3.0
+        assert _safe_eval("10 % 3") == 1.0
+
+    def test_power(self):
+        assert _safe_eval("2 ** 10") == 1024.0
+
+    def test_negative_numbers(self):
+        assert _safe_eval("-5 + 3") == -2.0
+        assert _safe_eval("-(3 + 2)") == -5.0
+
+    def test_nested_expression(self):
+        assert _safe_eval("((450 - 360) / 360) * 100") == 25.0
+
+    def test_floating_point_cleanup(self):
+        # 0.1 + 0.2 should not produce 0.30000000000000004
+        result = _safe_eval("0.1 + 0.2")
+        assert result == 0.3
+
+    def test_division_by_zero(self):
+        with pytest.raises(ZeroDivisionError):
+            _safe_eval("1 / 0")
+
+    def test_reject_function_calls(self):
+        with pytest.raises(ValueError, match="unsupported"):
+            _safe_eval("abs(-5)")
+
+    def test_reject_variable_names(self):
+        with pytest.raises(ValueError, match="unsupported"):
+            _safe_eval("x + 1")
+
+    def test_reject_imports(self):
+        with pytest.raises(ValueError, match="unsupported"):
+            _safe_eval("__import__('os')")
+
+    def test_reject_strings(self):
+        with pytest.raises(ValueError, match="unsupported value type"):
+            _safe_eval("'hello'")
+
+    def test_reject_large_exponent(self):
+        with pytest.raises(ValueError, match="exponent too large"):
+            _safe_eval("2 ** 999")
+
+    def test_reject_long_expression(self):
+        with pytest.raises(ValueError, match="too long"):
+            _safe_eval("1 + " * 200 + "1")
+
+    def test_whitespace_tolerance(self):
+        assert _safe_eval("  2 + 3  ") == 5.0
+
+
+class TestCalculateParams:
+    """CalculateParams validation."""
+
+    def test_valid(self):
+        p = CalculateParams(formulas={"x": "1+1"})
+        assert p.formulas == {"x": "1+1"}
+
+    def test_empty_rejected(self):
+        with pytest.raises(Exception):
+            CalculateParams(formulas={})
+
+    def test_too_many_rejected(self):
+        with pytest.raises(Exception):
+            CalculateParams(formulas={f"f{i}": "1+1" for i in range(21)})
+
+
+@pytest.mark.asyncio
+class TestCalculate:
+    """calculate() function — batch evaluation with per-formula errors."""
+
+    async def test_single_formula(self):
+        params = CalculateParams(formulas={"growth": "((450 - 360) / 360) * 100"})
+        result = await calculate(params)
+        assert result == {"growth": 25.0}
+
+    async def test_multiple_formulas(self):
+        params = CalculateParams(formulas={
+            "a": "10 + 5",
+            "b": "100 / 4",
+            "c": "2 ** 8",
+        })
+        result = await calculate(params)
+        assert result == {"a": 15.0, "b": 25.0, "c": 256.0}
+
+    async def test_per_formula_error(self):
+        params = CalculateParams(formulas={
+            "good": "10 + 5",
+            "bad": "1 / 0",
+            "evil": "abs(-5)",
+        })
+        result = await calculate(params)
+        assert result["good"] == 15.0
+        assert "division by zero" in result["bad"]
+        assert "error" in result["evil"]
+
+    async def test_syntax_error(self):
+        params = CalculateParams(formulas={"broken": "1 + + + )"})
+        result = await calculate(params)
+        assert "error" in result["broken"]
+
+
+@pytest.mark.asyncio
+class TestExecuteCrudCalculate:
+    """execute_crud dispatches calculate correctly."""
+
+    async def test_dispatch(self):
+        result = await execute_crud(
+            tool="calculate",
+            params={"formulas": {"x": "2 + 3"}},
+            user_id="user-1",
+        )
+        assert result == {"x": 5.0}

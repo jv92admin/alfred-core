@@ -11,7 +11,9 @@ Domain-specific CRUD intelligence (semantic search, ingredient lookup,
 auto-includes) is provided by CRUDMiddleware via the DomainConfig.
 """
 
+import ast
 import logging
+import operator
 from typing import Any, Literal
 
 from pydantic import BaseModel, model_validator
@@ -87,6 +89,95 @@ class DbAnalyzeParams(BaseModel):
         if self.aggregate in ("sum", "avg", "min", "max") and not self.aggregate_field:
             raise ValueError(f"'{self.aggregate}' requires 'aggregate_field'")
         return self
+
+
+class CalculateParams(BaseModel):
+    """Parameters for calculate — safe arithmetic evaluation.
+
+    Accepts a dict of labeled expressions. Each expression is evaluated
+    via AST whitelist (no eval/exec). Returns label → result.
+    """
+
+    formulas: dict[str, str]  # label → arithmetic expression
+
+    @model_validator(mode="after")
+    def _validate_params(self):
+        if not self.formulas:
+            raise ValueError("'formulas' must contain at least one entry")
+        if len(self.formulas) > 20:
+            raise ValueError("Maximum 20 formulas per call")
+        return self
+
+
+# --- Safe arithmetic evaluator ---
+
+_BINOP_MAP: dict[type, Any] = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+_UNARYOP_MAP: dict[type, Any] = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+
+def _eval_node(node: ast.AST) -> float:
+    """Recursively evaluate an AST node. Only arithmetic ops allowed."""
+    if isinstance(node, ast.Expression):
+        return _eval_node(node.body)
+
+    if isinstance(node, ast.Constant):
+        if not isinstance(node.value, (int, float)):
+            raise ValueError(f"unsupported value type: {type(node.value).__name__}")
+        return float(node.value)
+
+    if isinstance(node, ast.BinOp):
+        op_func = _BINOP_MAP.get(type(node.op))
+        if op_func is None:
+            raise ValueError(f"unsupported operator: {type(node.op).__name__}")
+        left = _eval_node(node.left)
+        right = _eval_node(node.right)
+        # Guard against huge exponents
+        if isinstance(node.op, ast.Pow) and right > 100:
+            raise ValueError("exponent too large (max 100)")
+        return float(op_func(left, right))
+
+    if isinstance(node, ast.UnaryOp):
+        op_func = _UNARYOP_MAP.get(type(node.op))
+        if op_func is None:
+            raise ValueError(f"unsupported unary operator: {type(node.op).__name__}")
+        return float(op_func(_eval_node(node.operand)))
+
+    raise ValueError(f"unsupported operation: {type(node).__name__}")
+
+
+def _safe_eval(expr: str) -> float:
+    """Evaluate an arithmetic expression via AST whitelist. No eval()."""
+    if len(expr) > 500:
+        raise ValueError("expression too long (max 500 chars)")
+    tree = ast.parse(expr.strip(), mode="eval")
+    result = _eval_node(tree)
+    # Clean up floating point display: round to 10dp, strip trailing zeros
+    return float(f"{result:.10f}".rstrip("0").rstrip("."))
+
+
+async def calculate(params: CalculateParams) -> dict[str, float | str]:
+    """Evaluate labeled arithmetic expressions safely. No DB access."""
+    results: dict[str, float | str] = {}
+    for label, expr in params.formulas.items():
+        try:
+            results[label] = _safe_eval(expr)
+        except ZeroDivisionError:
+            results[label] = "error: division by zero"
+        except (ValueError, SyntaxError) as e:
+            results[label] = f"error: {e}"
+    return results
 
 
 class DbCreateParams(BaseModel):
@@ -580,6 +671,10 @@ async def execute_crud(
     # db_analyze: no registry translation, no middleware — raw analytical query
     if tool == "db_analyze":
         return await db_analyze(DbAnalyzeParams(**params), user_id)
+
+    # calculate: pure arithmetic, no DB access, no registry
+    if tool == "calculate":
+        return await calculate(CalculateParams(**params))
 
     # V8: Read rerouting for gen_* refs (MUST be BEFORE translation!)
     # If reading a gen_* ref that has __pending__ UUID, return from pending_artifacts.

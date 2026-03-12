@@ -337,7 +337,7 @@ The LLM sees both the ref and the human-readable name.
 |---------|--------------|-----------------|
 | Query building | `apply_filter()`, SELECT/INSERT/UPDATE/DELETE construction | `DatabaseAdapter` (thin wrapper around DB client) |
 | Filter operators | 14 ops mapped to PostgREST methods | — |
-| Analytical queries | `db_analyze` tool: `count`, `sum`, `avg`, `min`, `max` + GROUP BY via PostgREST v12+ | — (uses standard PostgREST syntax) |
+| Analytical queries | `db_analyze` tool: `count`, `sum`, `avg`, `min`, `max` + GROUP BY via PostgREST v12+. `calculate` tool: safe arithmetic evaluation (AST-whitelisted, no eval) | — (uses standard PostgREST syntax for db_analyze; calculate is pure Python) |
 | User scoping | Auto-inject `user_id` filter/field | `get_user_owned_tables()` — which tables need scoping |
 | UUID sanitization | Empty string → None conversion | `get_uuid_fields()` — which fields are UUIDs |
 | Ref translation | `_translate_input_params()`, `_translate_output()` | — (handled by core SessionIdRegistry) |

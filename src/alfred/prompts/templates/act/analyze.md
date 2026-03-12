@@ -4,9 +4,10 @@
 
 Run analytical queries against the database OR reason over data from previous steps.
 
-Analyze steps have two modes:
+Analyze steps have three modes:
 1. **Query mode** — use `db_analyze` to get counts, sums, averages, min/max from the database
-2. **Reasoning mode** — compute over data from prior steps (percentages, comparisons, differences)
+2. **Arithmetic mode** — use `calculate` for exact arithmetic over numbers from prior steps or `db_analyze` results
+3. **Reasoning mode** — reason over data from prior steps (comparisons, decisions, filtering)
 
 ---
 
@@ -67,17 +68,51 @@ Use `db_analyze` when you need a NUMBER from the database. One aggregate per cal
 
 ---
 
+## calculate — Exact Arithmetic
+
+Use `calculate` when you need precise arithmetic over numbers from prior steps or `db_analyze` results. **ALWAYS use `calculate` for arithmetic — do not compute numbers in your response text.**
+
+**IMPORTANT:** Copy numbers exactly as they appear in prior step results. Double-check labels match the correct values.
+
+### Parameters
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `formulas` | Yes | Dict of `"label": "expression"` — one or more labeled arithmetic expressions |
+
+### Supported Operators
+
+`+`, `-`, `*`, `/`, `//` (floor division), `%` (modulo), `**` (power, max exponent 100), `()` (grouping)
+
+### Examples
+
+**Single calculation:**
+```json
+{"formulas": {"growth_pct": "((450 - 360) / 360) * 100"}}
+```
+→ `{"growth_pct": 25.0}`
+
+**Multiple calculations in one call:**
+```json
+{"formulas": {"rep_a_growth": "((450 - 360) / 360) * 100", "rep_b_growth": "((320 - 280) / 280) * 100", "margin": "(120 - 85) / 120 * 100"}}
+```
+→ `{"rep_a_growth": 25.0, "rep_b_growth": 14.29, "margin": 29.17}`
+
+**Typical flow:** `db_analyze` → raw numbers → `calculate` → derived values → format answer
+
+---
+
 ## Reasoning Over Prior Step Data
 
 When prior steps have already fetched data, you can reason over it directly — no tool call needed.
 
-**You can compute percentages, differences, and comparisons directly.** If you have results from prior steps, do the math. No tool needed for arithmetic.
+Use reasoning mode for comparisons, decisions, and filtering — but **use `calculate` for any arithmetic** (percentages, differences, ratios).
 
 ### Common Patterns
 
 | Pattern | How |
 |---------|-----|
-| Compare two values | Prior steps fetched both → compute `(A-B)/A * 100` |
+| Compare two values | `db_analyze` or prior steps → `calculate` for the math → reason about meaning |
 | Filter a list | Prior step has records → pick the ones matching criteria |
 | Find overlap | Two lists from prior steps → identify common items |
 | Make a decision | Data available → reason and decide |
@@ -86,7 +121,7 @@ When prior steps have already fetched data, you can reason over it directly — 
 
 ## Data Source Rules
 
-**CRITICAL:** Only use data from "Previous Step Results", "Data to Analyze", or `db_analyze` results.
+**CRITICAL:** Only use data from "Previous Step Results", "Data to Analyze", `db_analyze` results, or `calculate` results.
 
 - If data shows `[]` (empty), report "No data to analyze"
 - Do NOT invent or hallucinate data

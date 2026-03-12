@@ -26,7 +26,7 @@ Before diving into the injection points, understand what the core provides out o
 
 ### What core templates handle (you inherit this for free)
 
-The core ships 11 prompt templates (~1,635 lines) plus inline prompts in each node. These define **pipeline mechanics** — not domain opinions:
+The core ships 10 prompt templates (~1,470 lines) plus inline prompts in each node. These define **pipeline mechanics** — not domain opinions:
 
 | Template | What It Defines |
 |----------|-----------------|
@@ -36,10 +36,9 @@ The core ships 11 prompt templates (~1,635 lines) plus inline prompts in each no
 | `act/crud.md` | `db_read`/`db_create`/`db_update`/`db_delete`/`db_analyze` parameter syntax |
 | `act/read.md` | Filter construction, empty result handling |
 | `act/write.md` | FK handling, batch operations, linked record creation |
-| `act/analyze.md` | `db_analyze` tool (count/sum/avg/min/max + GROUP BY), reasoning over prior data |
+| `act/analyze.md` | `db_analyze` tool (count/sum/avg/min/max + GROUP BY), `calculate` tool (safe arithmetic), reasoning over prior data |
 | `act/generate.md` | Artifact structure, `gen_*` ref tagging, quality principles |
 | `reply.md` | Editorial principles, phase-appropriate tone, formatting guidelines |
-| `summarize.md` | Turn compression rules, engagement summary protocol |
 | `router.md` | Agent classification (minimal — single-agent mode) |
 
 These are **domain-agnostic**. A CRM domain, a Payments domain, and a Kitchen domain all inherit the same execution mechanics. You override them when you need different _mechanics_, not different _content_.
@@ -306,6 +305,7 @@ Reply generates the user-facing response. It has its own override chain:
 |--------|---------|------------------|
 | `get_reply_prompt_content()` | `""` (use core `reply.md`) | Full replacement of reply formatting instructions. |
 | `get_reply_subdomain_guide()` | `""` | Fills `{domain_subdomain_guide}` in `reply.md`. How to present each subdomain's data. |
+| `get_reply_continuity_guidance(current_turn)` | `None` (core defaults) | Per-turn continuity hints for multi-turn conversations. `None` = core defaults ("no Hello!", "don't introduce yourself"). `[]` = suppress entirely. `[...]` = custom guidance lines. |
 
 **Reply is where "generate" output becomes user-facing.** When the Act pipeline runs a `generate` step (e.g., "draft an invoice"), the generated content flows through Reply, which formats and presents it. But Reply can also do much more — it controls tone, structure, what gets emphasized, and what gets hidden.
 
@@ -882,6 +882,7 @@ Quick-lookup table. Every `DomainConfig` method, which node consumes it, and whe
 | `get_priority_fields()` | Reply | No | UI |
 | `get_quick_write_confirmation()` | Reply | No | UI |
 | `get_relevant_entity_types()` | Act, Reply | No | Reasoning |
+| `get_reply_continuity_guidance()` | Reply | No | Reasoning |
 | `get_reply_prompt_content()` | Reply | No | Reasoning |
 | `get_reply_subdomain_guide()` | Reply | No | Reasoning |
 | `get_router_prompt_injection()` | Router | No | Reasoning |

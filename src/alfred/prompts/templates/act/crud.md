@@ -9,6 +9,7 @@
 | `db_update` | Modify rows | read, write | `table`, `filters`, `data` (dict, applied to ALL matches) |
 | `db_delete` | Remove rows | read, write | `table`, `filters` |
 | `db_analyze` | Analytical query (aggregate + GROUP BY) | analyze | `table`, `aggregate`, `aggregate_field`, `filters`, `or_filters`, `group_by`, `order_by`, `order_dir`, `limit` |
+| `calculate` | Exact arithmetic evaluation (safe, no eval) | analyze | `formulas` (dict of `"label": "expression"`) |
 
 ---
 
