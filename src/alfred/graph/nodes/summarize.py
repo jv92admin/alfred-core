@@ -45,6 +45,12 @@ from alfred.memory.conversation import (
 
 logger = logging.getLogger(__name__)
 
+# NOTE: Unlike other nodes, Summarize has no .md prompt template.
+# It makes 4 separate short LLM calls (response summary, turn compression,
+# conversation compression, engagement summary), each with an inline default
+# prompt. Domains can override any of these via get_summarize_system_prompts().
+# The contracts doc lives at docs/contracts/summarize-node.md.
+
 
 # =============================================================================
 # Summarization Models
