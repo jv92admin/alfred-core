@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.7.0] — 2026-03-12
+
+### Added
+- **`calculate` tool** — safe arithmetic evaluation for analyze steps. Accepts a dict of labeled formulas (`{"formulas": {"label": "expression"}}`), evaluates via AST whitelist (no `eval`/`exec`), returns `{"label": result}`. Supports `+`, `-`, `*`, `/`, `//`, `%`, `**` with per-formula error handling. Analyze steps now have three modes: query (`db_analyze`), arithmetic (`calculate`), and reasoning.
+- **`get_reply_continuity_guidance()` domain hook** — domains can now override Reply node conversational continuity guidance on turn 2+. Return custom guidance lines, `None` for core defaults, or `[]` to suppress entirely. DomainConfig now has **75 methods** (was 74).
+- **22 new calculate tests** — AST safety (rejects functions, variables, imports, strings, large exponents), params validation, batch evaluation with per-formula errors, `execute_crud` dispatch.
+- **3 new reply continuity tests** — default guidance, custom override, suppression via empty list.
+
+### Changed
+- **Analyze prompt template expanded** — three-mode guidance (was dual-mode): query, arithmetic, reasoning. `calculate` tool documented with examples for single and batch calculations.
+- **CRUD reference updated** — `calculate` tool added to tools table in `act/crud.md`.
+- **Summarize node template alignment** — removed stale `summarize.md` template (summarize uses inline prompts, not templates). Moved contracts to `docs/contracts/summarize-node.md`.
+
 ## [2.6.1] — 2026-03-11
 
 ### Fixed
