@@ -60,6 +60,24 @@ roadmap/
 
 **Workflow:** `/pm` to start work, track status, or ship. `/doc-review` after every release.
 
+**Lessons loop:** `.claude/PITFALLS.md` holds graduated lessons (grep-checkable, sourced). Read it before any code-touching work; add to it when a bug passes its Graduation Rule; `/doc-review` prunes stale entries.
+
+## Canonical Sources
+
+One source of truth per topic — other docs may carry brief copies, never the authoritative version.
+
+| Topic | Canonical Source |
+|-------|-----------------|
+| PM workflow + templates | `.claude/skills/pm/SKILL.md` |
+| Doc propagation protocol | `.claude/skills/doc-review/SKILL.md` |
+| Lessons / pitfalls | `.claude/PITFALLS.md` |
+| DomainConfig hooks (every knob) | `docs/architecture/injection-map.md` |
+| Architecture index | `docs/architecture/overview.md` |
+| Public API surface | `docs/architecture/core-public-api.md` |
+| What shipped (user-facing) | `CHANGELOG.md` |
+| Version | `pyproject.toml` |
+| Work-item traceability | `roadmap/archive/v{version}/` |
+
 ## Documentation
 
 | Path | Purpose |

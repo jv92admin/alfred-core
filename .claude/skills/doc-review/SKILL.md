@@ -107,6 +107,7 @@ Easiest tier — mechanical updates.
 1. `CLAUDE.md` — Key files table, documentation table, development commands, system boundaries
 2. `.claude/settings.local.json` — Any permission or tool changes needed
 3. `.claude/skills/` — Any skills need updating based on changes
+4. `.claude/PITFALLS.md` — Each pattern's Check must still resolve against current code
 
 **Review protocol:**
 1. If a key file was added/renamed/removed → update `CLAUDE.md` Key Files table
@@ -114,6 +115,7 @@ Easiest tier — mechanical updates.
 3. If development commands changed → update `CLAUDE.md` Development Commands
 4. If system boundaries changed → update `CLAUDE.md` System Boundaries
 5. If skill behavior references changed code → update the skill
+6. For each `PITFALLS.md` pattern touching changed code: verify the Check still resolves (paths/symbols exist, rule still true). Stale entries get struck through with a date — never silently deleted
 
 **Standard:** CLAUDE.md must be the reliable quick-reference it claims to be.
 

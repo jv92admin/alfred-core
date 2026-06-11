@@ -76,9 +76,12 @@ When research is complete, or user says "plan this", "what's the approach":
 
 When the user approves the plan and says "go", "execute", "do it":
 
-1. Work through the PLAN.md tasks
-2. After execution, create `SUMMARY.md` in the same folder
-3. SUMMARY.md captures: what was actually done, decisions made during execution, files changed, any deviations from the plan
+1. Read `.claude/PITFALLS.md` — note any patterns relevant to the files this plan touches
+2. Work through the PLAN.md tasks
+3. **Plan-adherence check:** re-read PLAN.md against the actual diff. Every Reuse Map row honored? Every deviation gets a row in SUMMARY.md "Deviations from Plan" — no silent drift
+4. If a bug or near-miss during execution passes the PITFALLS Graduation Rule, add it to `.claude/PITFALLS.md` BEFORE writing SUMMARY.md
+5. Create `SUMMARY.md` in the same folder
+6. SUMMARY.md captures: what was actually done, decisions made during execution, files changed, any deviations from the plan
 
 ### 4. Ship / Release
 
@@ -171,6 +174,14 @@ Questions to resolve before planning.
 
 1-3 sentences describing the chosen approach.
 
+## Reuse Map
+
+Existing code this work builds on. Cite **live symbols + paths you have grep-verified** — not docs. A "New" row must say what was searched and why nothing existing fits.
+
+| Capability | Reuse / New | Symbol + Path | Why |
+|------------|-------------|---------------|-----|
+| ... | ... | ... | ... |
+
 ## Tasks
 
 - [ ] Task 1
@@ -191,6 +202,15 @@ How should failures behave? Default to loud errors over silent fallbacks.
 | File | Planned Change |
 |------|---------------|
 | ... | ... |
+
+## Definition of Done
+
+Tailor to the work type — these are the defaults:
+
+- [ ] `pytest tests/ -v` passes
+- [ ] New required domain touchpoints fail loudly when input is missing
+- [ ] Relevant `.claude/PITFALLS.md` Checks pass for touched files
+- [ ] Docs impact noted (which Tier 1/2 docs `/doc-review` will need to touch)
 ```
 
 ### SUMMARY.md
@@ -232,6 +252,8 @@ Any changes from the original PLAN.md and why.
 ## Principles
 
 - **Research first.** Trace the full chain before proposing changes. Use sub-agents.
+- **Reuse claims cite live code.** A PLAN's Reuse Map points at grep-verified symbols + paths, never at docs. Docs are discovery aids, not the contract.
+- **Pitfalls are part of the loop.** Read `.claude/PITFALLS.md` before executing; feed it (Graduation Rule) before summarizing.
 - **Plans live in the repo.** Not in plan mode, not in your head — in `roadmap/active/`.
 - **Present plans, don't just execute.** The user approves the plan before work begins.
 - **Loud failures over silent defaults.** For core features, error when domain input is missing.
