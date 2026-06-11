@@ -153,6 +153,10 @@ Ten capabilities. For each: the contract, who declares / who enforces, what exis
   session-scoped *contents* and conversation memory are S1 services.
 - **No UI rendering** — confirmed in the strategy docs: no surface needs the substrate to
   render UI; it exists only on LLM-bound payload paths. Frontends keep their own helpers.
+  Refined by the A1 sort (2026-06-10): the precise line is **LLM-bound vs user-bound** —
+  shaping a record for an LLM (`format_record_for_context`) is substrate; rendering a
+  reply for a human (`format_records_for_reply`, `get_subdomain_formatters`,
+  `get_empty_response`) is Agent-side.
 
 ## 4. How Consumers Reach It
 
