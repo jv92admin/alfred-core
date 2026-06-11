@@ -24,6 +24,15 @@ from alfred.domain.base import (
     EntityDefinition,
     SubdomainDefinition,
 )
+from alfred.domain.grades import (
+    GRADE_EXTERNAL,
+    GRADE_REPLY,
+    GradeError,
+    GradeRegistry,
+    GradeRegistryError,
+    StripSet,
+    UnknownGradeError,
+)
 
 _current_domain: DomainConfig | None = None
 
@@ -35,10 +44,19 @@ def register_domain(domain: DomainConfig) -> None:
     Must be called at app startup before any core functions are used.
     Each domain application (kitchen, FPL, etc.) calls this once.
 
+    Validates the domain's audience-grade declaration (substrate C-6,
+    seam contract §3): both well-known grades present, external ⊇ reply.
+    An invalid declaration fails loudly here, at startup — the domain is
+    not registered.
+
     Args:
         domain: The DomainConfig implementation to use
+
+    Raises:
+        GradeRegistryError: If get_audience_grades() is invalid.
     """
     global _current_domain
+    GradeRegistry.from_context(domain)
     _current_domain = domain
 
 
@@ -65,4 +83,12 @@ __all__ = [
     "SubdomainDefinition",
     "register_domain",
     "get_current_domain",
+    # Audience grades (substrate C-6)
+    "GRADE_EXTERNAL",
+    "GRADE_REPLY",
+    "GradeError",
+    "GradeRegistry",
+    "GradeRegistryError",
+    "StripSet",
+    "UnknownGradeError",
 ]

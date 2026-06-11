@@ -1,6 +1,6 @@
 # Core Program Roadmap — Substrate & Shapes (Sequential Feature List)
 
-**Status:** In Progress — Track A: A0 ✅ A1 ✅ (verified 2026-06-11) · next: A2, B1, C1
+**Status:** In Progress — Track A: A0 ✅ A1 ✅ A2 ✅ (verified 2026-06-11) · next: A3 · B1, C1 startable
 **Tracks:** 4 parallel + 1 cross-cutting · 19 features
 **Supersedes:** the WI-table in [0610-shapes-substrate-program.md](0610-shapes-substrate-program.md) §7 (narrative docs remain the rationale; THIS doc is the build order)
 
@@ -29,7 +29,7 @@ C-1…C-10) · [0610-mode-language.md](0610-mode-language.md) (shapes S1–S5, E
 |---|---------|--------------------|--------|
 | A0 | **Seam contract sign-off** | SEAM_CONTRACT.md agreed (signatures, ShapedPayload + `schema_version`, grade registry, Core re-validates filters) | ✅ 2026-06-10 |
 | A1 | **Protocol split (C-1)** | `DomainContext` + `AgentConfig` protocols; `DomainConfig` = composed (Kitchen/FPL untouched, zero migration); **`pre_write` lands in `DomainContext`** (amendment of record); CI import-linter: `alfred.context` imports no langgraph/instructor | ✅ 2026-06-11 — PM-verified ([0611-protocol-split](0611-protocol-split/SUMMARY.md): 78 members 34/44, 23 abstract frozen, 221 tests, mypy 368→368, seam import live) |
-| A2 | **Grade registry (C-6 minimal)** | Domain declares named grades as strip sets; core validates `external ⊇ reply` at registration (loud failure); grades applied at assembly time | Not Started |
+| A2 | **Grade registry (C-6 minimal)** | Domain declares named grades as strip sets; core validates `external ⊇ reply` at registration (loud failure); grades applied at assembly time | ✅ 2026-06-11 — PM-verified ([0611-grade-registry](0611-grade-registry/SUMMARY.md): `grades.py` stdlib-only, `get_audience_grades` defaulted (35/44, abstract unchanged), 234 tests, mypy 368→368, seam exports canonical, Guardrail #3 pinned by equality test) |
 | A3 | **State-free entrypoints (E2/C-5)** | `assemble_entity_context` / `assemble_subdomain_read` per seam contract, built as thin compositions over the internal assembly chain (identity policy + grade as parameters); core-side filter validation; no AlfredState/session/LLM on any path (E5 test); **3 golden consumer fixtures green (S1-ref read, S3 recipe, S5 preload — see Compatibility Guardrail)** | Not Started |
 | A4 | **Release: additive minor** | Tests green incl. new conformance tests (E2, E5-C0, import isolation, grade ordering); CHANGELOG; ledge pins min version; `/doc-review` run | Not Started |
 

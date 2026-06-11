@@ -98,10 +98,19 @@ Ten capabilities. For each: the contract, who declares / who enforces, what exis
   text: RLS protects rows; grades protect fields and everything generated from them.
 - **Declares:** the grade definitions (a domain RBAC judgment). **Enforces:** core strips
   during C-5 assembly.
-- **Exists today:** **not in core.** `strip_fields` exists only domain-side in ledge_alfred;
-  core's only field hiding is schema.py's hidden-columns filter (user_id/timestamps).
-- **Gap:** promote grades to a core concept inside C-5. The sharpest single risk it closes:
-  a system-actor S3 run baking financials into a summary a restricted viewer can open.
+- **Exists today:** partial and wrong-shaped (corrected 2026-06-11 — A2 research caught an
+  audit error here): core has `get_strip_fields(context)` on `DomainContext`
+  (`domain/context.py:547`, flat set, contexts `injection`/`reply`), but it is consumed
+  **only by the user-bound reply renderer** (`reply.py:1075`); the `injection` context has
+  zero core consumers, and **no strip mechanism exists on the LLM-bound path**. Ledge
+  declares into it domain-side.
+- **Gap:** the grade registry (A2, in progress): named grades as `StripSet`s
+  (global + per-table), validated `external ⊇ reply` at registration, applied on the
+  LLM-bound assembly path. Deliberately NOT bridged to `get_strip_fields` — the user-bound
+  and LLM-bound paths stay separate until D7. Grades are **pure field removal**; value
+  transforms (cents→dollars) remain `post_read` middleware, grade-independent. The
+  sharpest risk this closes: a system-actor S3 run baking financials into a summary a
+  restricted viewer can open.
 
 ### C-7 Candidate retrieval (identity-free matching)
 - **Contract:** `resolve_candidates(ctx, hints) → ranked, shaped candidate sets` — for inputs

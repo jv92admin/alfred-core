@@ -31,6 +31,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from alfred.domain.grades import GRADE_EXTERNAL, GRADE_REPLY, StripSet
+
 if TYPE_CHECKING:
     from alfred.db.adapter import DatabaseAdapter
 
@@ -546,19 +548,50 @@ class DomainContext(ABC):
 
     def get_strip_fields(self, context: str = "injection") -> set[str]:
         """
-        Get fields to strip from records before presenting to LLM/user.
+        Get fields to strip from USER-BOUND reply rendering.
 
-        Different contexts may strip different fields:
-        - "injection": Fields stripped from prompt context (e.g., user_id)
-        - "reply": Fields stripped from user-facing replies (e.g., all IDs)
+        Governs the user-facing path only: consumed by the reply renderer
+        (graph/nodes/reply.py) when formatting records into the reply a human
+        reads. It does NOT participate in LLM-bound / external-bound context
+        assembly — that path is governed by ``get_audience_grades()``.
+
+        Do not bridge the two: wiring this method's "reply" context into the
+        assembly chain's "reply" grade would change what the LLM sees today
+        (Compatibility Guardrail #3; 0611-grade-registry RESEARCH Finding 2).
 
         Args:
-            context: "injection" or "reply"
+            context: "injection" or "reply" ("reply" is the only context core
+                consumes today)
 
         Returns:
             Set of field names to strip
         """
         return set()  # Default: strip nothing
+
+    def get_audience_grades(self) -> dict[str, StripSet]:
+        """
+        Declare named redaction grades for LLM-BOUND / EXTERNAL-BOUND assembly.
+
+        Governs the context-assembly path (substrate capability C-6, seam
+        contract §3): the assembly chain strips at the requested grade before
+        formatting (post_read → fk_enrich → strip(grade) → format → header).
+        Core validates the declaration at ``register_domain()`` — both
+        well-known grades (GRADE_REPLY, GRADE_EXTERNAL) must be present and
+        ``external ⊇ reply`` must hold (GradeRegistryError otherwise).
+
+        Grades are pure field removal; transform dispositions (cents→dollars)
+        remain post_read middleware, grade-independent.
+
+        Distinct from ``get_strip_fields()``, which governs USER-BOUND reply
+        rendering only — do not bridge the two (0611-grade-registry RESEARCH
+        Finding 2). The default below strips nothing, reproducing today's
+        assembly output byte-for-byte (Compatibility Guardrail #3).
+
+        Returns:
+            Dict mapping grade name → StripSet. Default: the well-known
+            grades with empty strip sets — exactly today's behavior.
+        """
+        return {GRADE_REPLY: StripSet(), GRADE_EXTERNAL: StripSet()}
 
     def format_entity_for_context(
         self, entity_type: str, ref: str, label: str, data: dict, **kwargs: Any

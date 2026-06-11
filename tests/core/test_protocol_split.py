@@ -55,6 +55,11 @@ CONTEXT_MEMBERS = {
     "get_entity_key_fields",
     # Data shaping (LLM-bound / external-bound)
     "get_strip_fields",
+    # A2 (0611-grade-registry): audience-grade declaration — the deliberate
+    # 34→35 member addition this freeze exists to force into the open.
+    # Defaulted (well-known grades, empty strip sets), so ABSTRACT_MEMBERS
+    # is unchanged — zero migration for existing domains.
+    "get_audience_grades",
     "format_entity_for_context",
     "infer_table_from_record",
     "format_record_for_context",
@@ -202,7 +207,8 @@ def test_domain_config_defines_nothing_itself():
 
 
 def test_member_count_matches_research():
-    assert len(CONTEXT_MEMBERS) == 34
+    # A1 sort of record: 34/44 (78). A2 added get_audience_grades → 35/44 (79).
+    assert len(CONTEXT_MEMBERS) == 35
     assert len(AGENT_MEMBERS) == 44
 
 

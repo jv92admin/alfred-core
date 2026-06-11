@@ -41,9 +41,28 @@ from alfred.context.reasoning import (
 # enforced by tests/core/test_import_isolation.py.
 from alfred.domain.context import DomainContext
 
+# Audience grades (substrate C-6, seam contract §3) — same seam import path.
+from alfred.domain.grades import (
+    GRADE_EXTERNAL,
+    GRADE_REPLY,
+    GradeError,
+    GradeRegistry,
+    GradeRegistryError,
+    StripSet,
+    UnknownGradeError,
+)
+
 __all__ = [
     # Substrate Protocol
     "DomainContext",
+    # Audience Grades (C-6)
+    "GRADE_EXTERNAL",
+    "GRADE_REPLY",
+    "GradeError",
+    "GradeRegistry",
+    "GradeRegistryError",
+    "StripSet",
+    "UnknownGradeError",
     # Entity Layer
     "EntityContext",
     "EntitySnapshot",
