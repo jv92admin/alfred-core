@@ -227,8 +227,8 @@ class MultiAgentOrchestrator:
     def __init__(
         self,
         agents: list[AgentProtocol],
-        router: AgentRouter | None = None,
         default_agent: str,
+        router: AgentRouter | None = None,
     ):
         """
         Initialize the orchestrator.

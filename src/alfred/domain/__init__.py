@@ -18,7 +18,9 @@ Usage:
 """
 
 from alfred.domain.base import (
+    AgentConfig,
     DomainConfig,
+    DomainContext,
     EntityDefinition,
     SubdomainDefinition,
 )
@@ -51,14 +53,14 @@ def get_current_domain() -> DomainConfig:
         RuntimeError: If no domain has been registered via register_domain()
     """
     if _current_domain is None:
-        raise RuntimeError(
-            "No domain registered. Call register_domain() at app startup."
-        )
+        raise RuntimeError("No domain registered. Call register_domain() at app startup.")
     return _current_domain
 
 
 __all__ = [
+    "AgentConfig",
     "DomainConfig",
+    "DomainContext",
     "EntityDefinition",
     "SubdomainDefinition",
     "register_domain",

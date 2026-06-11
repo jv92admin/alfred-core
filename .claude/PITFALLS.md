@@ -59,6 +59,13 @@ If a lesson fails (1), it belongs in a code comment or test, not here. If it fai
 - **Fix:** Route through the existing approval flow; no exceptions for "obviously wanted" content.
 - **Incidents:** — (founding invariant)
 
+### unimported-module-rot
+- **Severity:** P1 · silent-failure · source: incident
+- **Pattern:** A module in `src/alfred/` that no test imports can be syntactically invalid (or otherwise unimportable) while the whole suite stays green. ruff/mypy would catch it, but those gates aren't enforced repo-wide, so the rot ships.
+- **Check:** `python -m compileall src/alfred -q` exits 0 (catches syntax errors in unimported modules). Stronger: a smoke test importing every `alfred.*` submodule.
+- **Fix:** Fix the module, then re-run the compileall check. Don't rely on the test suite alone to prove importability.
+- **Incidents:** 2026-06-11 · `agents/base.py:MultiAgentOrchestrator.__init__` → non-default arg after default (a `SyntaxError` on import) — invisible because zero call sites and zero test imports; surfaced when A1's mypy gate refused to check anything; fixed by reordering params (keyword-compatible, no silent default added).
+
 ## 4. Release / packaging
 
 ### doc-count-drift
