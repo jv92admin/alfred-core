@@ -13,8 +13,6 @@ alfred.domain.kitchen.schema. Access them via DomainConfig methods.
 import time
 from typing import Any
 
-
-
 # =============================================================================
 # Domain-Aware Accessors
 # =============================================================================
@@ -25,6 +23,7 @@ from typing import Any
 def _get_domain():
     """Lazy import to avoid circular dependency."""
     from alfred.domain import get_current_domain
+
     return get_current_domain()
 
 
@@ -74,40 +73,41 @@ def get_scope_for_subdomain(subdomain: str) -> str:
     scope = _get_subdomain_scope().get(subdomain, {})
     if not scope:
         return ""
-    
+
     lines = []
-    
+
     # Description
     if "description" in scope:
         lines.append(f"**Scope:** {scope['description']}")
-    
+
     # Influenced by
     if "influenced_by" in scope:
         influenced = ", ".join(scope["influenced_by"])
         lines.append(f"**Influenced by:** {influenced}")
-    
+
     # Implicit children
     if "implicit_children" in scope:
         children = ", ".join(scope["implicit_children"])
         lines.append(f"**Linked tables:** Always handle {children} together with this subdomain.")
-    
+
     # Implicit dependencies
     if "implicit_dependencies" in scope:
         deps = ", ".join(scope["implicit_dependencies"])
         exceptions = scope.get("exception_meal_types", [])
         if exceptions:
             exc_str = ", ".join(exceptions)
-            lines.append(f"**Dependencies:** Usually needs {deps} (except for {exc_str} meal types).")
+            lines.append(
+                f"**Dependencies:** Usually needs {deps} (except for {exc_str} meal types)."
+            )
         else:
             lines.append(f"**Dependencies:** Usually needs {deps}.")
-    
+
     # Related
     if "related" in scope:
         related = ", ".join(scope["related"])
         lines.append(f"**Works with:** {related}")
-    
-    return "\n".join(lines)
 
+    return "\n".join(lines)
 
 
 # =============================================================================
@@ -129,6 +129,7 @@ async def get_table_schema(table: str) -> dict[str, Any]:
         Dict with table name and column info
     """
     from alfred.domain import get_current_domain
+
     client = get_current_domain().get_db_adapter()
 
     try:
@@ -213,9 +214,7 @@ def format_as_markdown(schemas: list[dict], subdomain: str) -> str:
             continue
 
         # Filter out hidden system columns
-        visible_columns = [
-            col for col in columns if col["name"] not in HIDDEN_COLUMNS
-        ]
+        visible_columns = [col for col in columns if col["name"] not in HIDDEN_COLUMNS]
 
         lines.append("| Column | Type | Nullable |")
         lines.append("|--------|------|----------|")
@@ -342,8 +341,14 @@ def _get_subdomain_examples():
 # Legacy constant access — for imports like `from alfred.tools.schema import FIELD_ENUMS`
 # These are consumed by web/schema_routes.py and tools/__init__.py. Redirect to domain.
 def __getattr__(name):
-    """Module-level __getattr__ for lazy constant access via domain config."""
-    domain = _get_domain()
+    """Module-level __getattr__ for lazy constant access via domain config.
+
+    The unknown-name check MUST precede the domain lookup: the import system
+    probes missing attributes (e.g. ``__path__`` while resolving a fromlist),
+    and resolving the domain first turns that benign AttributeError into a
+    "No domain registered" RuntimeError — which made importing this module
+    (and any package that imports it) require a registered domain.
+    """
     _ATTR_MAP = {
         "FIELD_ENUMS": "get_field_enums",
         "SEMANTIC_NOTES": "get_semantic_notes",
@@ -352,9 +357,9 @@ def __getattr__(name):
         "SUBDOMAIN_REGISTRY": "get_subdomain_registry",
         "SUBDOMAIN_EXAMPLES": "get_subdomain_examples",
     }
-    if name in _ATTR_MAP:
-        return getattr(domain, _ATTR_MAP[name])()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    if name not in _ATTR_MAP:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(_get_domain(), _ATTR_MAP[name])()
 
 
 def _get_filter_schema() -> str:
@@ -397,7 +402,7 @@ def get_subdomain_context(subdomain: str) -> str:
 async def get_schema_with_fallback(subdomain: str) -> str:
     """
     Get schema for subdomain, falling back to hardcoded if DB unavailable.
-    
+
     Includes:
     - Table column definitions (schema)
     - Subdomain-specific CRUD examples with exact filter syntax
@@ -415,10 +420,8 @@ async def get_schema_with_fallback(subdomain: str) -> str:
         if "No columns found" in schema or "Schema unavailable" in schema:
             schema = fallback_schemas.get(subdomain, schema)
     except Exception:
-        schema = fallback_schemas.get(
-            subdomain, f"Unknown subdomain: {subdomain}"
-        )
-    
+        schema = fallback_schemas.get(subdomain, f"Unknown subdomain: {subdomain}")
+
     # Append subdomain context (filter schema + enums + notes + examples)
     context = get_subdomain_context(subdomain)
     if context:
@@ -434,9 +437,9 @@ async def get_schema_with_fallback(subdomain: str) -> str:
 async def validate_schema_drift() -> list[str]:
     """
     Compare FALLBACK_SCHEMAS to actual DB schema and report drift.
-    
+
     Call this on startup to catch schema mismatches early.
-    
+
     Returns:
         List of warning messages (empty if no drift)
     """
@@ -460,6 +463,7 @@ async def validate_schema_drift() -> list[str]:
                 if f"### {table}" in fallback:
                     # Extract column names from markdown table
                     import re
+
                     pattern = rf"### {table}\n.*?\n\|.*?\n\|.*?\n((?:\|.*?\n)+)"
                     match = re.search(pattern, fallback, re.DOTALL)
                     if match:
@@ -471,14 +475,14 @@ async def validate_schema_drift() -> list[str]:
                                 col_name = parts[1].strip()
                                 if col_name and col_name not in ("Column", "---"):
                                     fallback_columns.add(col_name)
-                        
+
                         # Compare (ignore hidden columns)
                         fallback_visible = fallback_columns - HIDDEN_COLUMNS
                         db_visible = db_columns - HIDDEN_COLUMNS
-                        
+
                         missing_in_db = fallback_visible - db_visible
                         missing_in_fallback = db_visible - fallback_visible
-                        
+
                         if missing_in_db:
                             warnings.append(
                                 f"⚠️ {subdomain}.{table}: Columns in fallback but not DB: {missing_in_db}"
@@ -489,15 +493,16 @@ async def validate_schema_drift() -> list[str]:
                             )
             except Exception as e:
                 warnings.append(f"❌ Error checking {subdomain}.{table}: {e}")
-    
+
     return warnings
 
 
 async def log_schema_drift_warnings():
     """Log schema drift warnings on startup."""
     import logging
+
     logger = logging.getLogger(__name__)
-    
+
     warnings = await validate_schema_drift()
     if warnings:
         logger.warning("Schema drift detected:")
@@ -505,4 +510,3 @@ async def log_schema_drift_warnings():
             logger.warning(f"  {w}")
     else:
         logger.info("Schema validation passed - no drift detected")
-

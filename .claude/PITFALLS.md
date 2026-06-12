@@ -66,6 +66,13 @@ If a lesson fails (1), it belongs in a code comment or test, not here. If it fai
 - **Fix:** Fix the module, then re-run the compileall check. Don't rely on the test suite alone to prove importability.
 - **Incidents:** 2026-06-11 · `agents/base.py:MultiAgentOrchestrator.__init__` → non-default arg after default (a `SyntaxError` on import) — invisible because zero call sites and zero test imports; surfaced when A1's mypy gate refused to check anything; fixed by reordering params (keyword-compatible, no silent default added).
 
+### import-time-domain-coupling
+- **Severity:** P1 · silent-failure · source: incident
+- **Pattern:** A module-level `__getattr__` (or a package `__init__`) resolves the global domain while serving an attribute. The import system probes missing attributes (e.g. `__path__` during fromlist resolution), so merely *importing* the module — or any package whose `__init__` imports it — comes to require a registered domain. Invisible as long as every caller registers a domain before importing; detonates in domain-free contexts (seam consumers, fresh interpreters, isolation tests). Corollary: a leaf module's import-cleanliness is NOT sufficient — `import pkg.leaf` executes `pkg/__init__.py` first.
+- **Check:** `python -c "import alfred.context"` and `python -c "import alfred.tools"` succeed in a fresh interpreter with NO domain registered (`tests/core/test_import_isolation.py` covers the seam path in subprocesses). In any module `__getattr__`, the unknown-name check precedes `get_current_domain()`/`_get_domain()`.
+- **Fix:** name-check first, raise `AttributeError` early for unknown names; expose domain-backed names from package `__init__` lazily (module `__getattr__`), never as eager from-imports.
+- **Incidents:** 2026-06-12 · `tools/schema.py:__getattr__` + `tools/__init__.py` eager `SUBDOMAIN_REGISTRY` → A3's `import alfred.context.assembly` raised "No domain registered" (schema's `__getattr__` called `_get_domain()` before checking the name; the package `__init__` eagerly imported a domain-backed constant). GROUNDING had verified `tools/crud.py` import-clean and the seam still got bitten via the parent package. Fixed by reordering the check + lazy `__getattr__` in `tools/__init__.py`.
+
 ## 4. Release / packaging
 
 ### doc-count-drift

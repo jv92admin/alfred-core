@@ -60,6 +60,10 @@ CONTEXT_MEMBERS = {
     # Defaulted (well-known grades, empty strip sets), so ABSTRACT_MEMBERS
     # is unchanged — zero migration for existing domains.
     "get_audience_grades",
+    # A3 (0612-assembly-entrypoints): per-table header for ShapedPayload —
+    # the deliberate 35→36 addition (P4). Defaulted (owning subdomain's
+    # semantic notes), so ABSTRACT_MEMBERS is unchanged — zero migration.
+    "get_table_notes",
     "format_entity_for_context",
     "infer_table_from_record",
     "format_record_for_context",
@@ -208,7 +212,8 @@ def test_domain_config_defines_nothing_itself():
 
 def test_member_count_matches_research():
     # A1 sort of record: 34/44 (78). A2 added get_audience_grades → 35/44 (79).
-    assert len(CONTEXT_MEMBERS) == 35
+    # A3 added get_table_notes → 36/44 (80).
+    assert len(CONTEXT_MEMBERS) == 36
     assert len(AGENT_MEMBERS) == 44
 
 

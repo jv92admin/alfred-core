@@ -9,6 +9,24 @@ Three-Layer Context Model:
 Each node subscribes to specific slices via build_*_context() functions.
 """
 
+# State-free assembly entrypoints (substrate C-5, seam contract §1–§2) — A3.
+# The composable chain links live in alfred.context.assembly (Guardrail #1:
+# the entrypoints are consumers of the chain, not the chain itself).
+from alfred.context.assembly import (
+    SCHEMA_VERSION,
+    AssemblyError,
+    FilterValidationError,
+    IdentityPolicy,
+    RecordNotFoundError,
+    ShapedPayload,
+    TableNotInSubdomainError,
+    UnknownEntityTypeError,
+    UnknownSubdomainError,
+    assemble_entity_context,
+    assemble_subdomain_read,
+    identity_drop_ids,
+    identity_passthrough,
+)
 from alfred.context.builders import (
     build_reply_context,
     build_think_context,
@@ -55,6 +73,20 @@ from alfred.domain.grades import (
 __all__ = [
     # Substrate Protocol
     "DomainContext",
+    # Assembly Entrypoints (C-5, seam §1–§2)
+    "assemble_entity_context",
+    "assemble_subdomain_read",
+    "ShapedPayload",
+    "SCHEMA_VERSION",
+    "IdentityPolicy",
+    "identity_drop_ids",
+    "identity_passthrough",
+    "AssemblyError",
+    "FilterValidationError",
+    "UnknownEntityTypeError",
+    "UnknownSubdomainError",
+    "TableNotInSubdomainError",
+    "RecordNotFoundError",
     # Audience Grades (C-6)
     "GRADE_EXTERNAL",
     "GRADE_REPLY",

@@ -593,6 +593,37 @@ class DomainContext(ABC):
         """
         return {GRADE_REPLY: StripSet(), GRADE_EXTERNAL: StripSet()}
 
+    def get_table_notes(self, table: str) -> str:
+        """
+        Per-table interpretation hint for assembled payloads (A3 / seam §2).
+
+        Becomes ``ShapedPayload.header`` in the state-free assembly chain
+        (alfred.context.assembly) — "shaped data + how to read it in one
+        response". Override to declare table-level notes; external-serving
+        domains declare their per-table slivers here (ledge Phase 1), not in
+        ``get_semantic_notes()``.
+
+        Default: the owning subdomain's semantic notes — the subdomain whose
+        ``primary_table`` is ``table`` wins; otherwise the first subdomain
+        listing it in ``related_tables``; ``""`` when no subdomain owns it.
+
+        Args:
+            table: The table name.
+
+        Returns:
+            Interpretation hint text, or "" when none is declared.
+        """
+        owner: str | None = None
+        for sub in self.subdomains.values():
+            if sub.primary_table == table:
+                owner = sub.name
+                break
+            if owner is None and table in sub.related_tables:
+                owner = sub.name
+        if owner is None:
+            return ""
+        return self.get_semantic_notes().get(owner, "")
+
     def format_entity_for_context(
         self, entity_type: str, ref: str, label: str, data: dict, **kwargs: Any
     ) -> list[str]:

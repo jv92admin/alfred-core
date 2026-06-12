@@ -6,22 +6,23 @@ proving that src/alfred/ has zero dependency on src/alfred_kitchen/.
 """
 
 import os
-import pytest
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+import pytest
 
 # Set test environment before importing alfred modules
 os.environ["ALFRED_ENV"] = "development"
 os.environ["ALFRED_USE_ADVANCED_MODELS"] = "false"
 os.environ.setdefault("OPENAI_API_KEY", "test-key-not-real")
 
+from alfred.domain import register_domain
 from alfred.domain.base import (
-    CRUDMiddleware,
     DomainConfig,
     EntityDefinition,
     SubdomainDefinition,
 )
-from alfred.domain import register_domain
-
+from alfred.domain.context import DomainContext
 
 # ---------------------------------------------------------------------------
 # StubDomainConfig — minimal implementation for core-only tests
@@ -227,9 +228,7 @@ def make_mock_db(data=None):
     mock_table.execute.return_value = MagicMock(data=data)
 
     mock.table.return_value = mock_table
-    mock.rpc.return_value = MagicMock(
-        data=[], execute=MagicMock(return_value=MagicMock(data=[]))
-    )
+    mock.rpc.return_value = MagicMock(data=[], execute=MagicMock(return_value=MagicMock(data=[])))
     return mock
 
 
@@ -256,6 +255,7 @@ def register_stub_domain():
     yield domain
     # Reset to None after test (clean slate)
     import alfred.domain as _mod
+
     _mod._current_domain = None
 
 
@@ -263,6 +263,293 @@ def register_stub_domain():
 def stub_domain(register_stub_domain):
     """Explicitly access the StubDomainConfig instance."""
     return register_stub_domain
+
+
+# ---------------------------------------------------------------------------
+# A3 assembly-chain test infrastructure (0612-assembly-entrypoints)
+#
+# FakeTableAdapter — an HONEST per-table fake (unlike make_mock_db, which
+# returns the same data for every table): filters actually filter, limit
+# actually limits, and errors defer to execute() exactly as PostgREST does
+# (builders never raise; .execute() does). Shared by the unit suite and the
+# golden consumer fixtures.
+# ---------------------------------------------------------------------------
+
+
+class _FakeNotProxy:
+    """Supports query.not_.in_() / query.not_.is_() like the PostgREST builder."""
+
+    def __init__(self, query):
+        self._query = query
+
+    def in_(self, field, values):
+        self._query.calls.append(("not_in", field, values))
+        vals = {str(v) for v in values}
+        self._query._rows = [r for r in self._query._rows if str(r.get(field)) not in vals]
+        return self._query
+
+    def is_(self, field, value):
+        self._query.calls.append(("not_is", field, value))
+        if value == "null":
+            self._query._rows = [r for r in self._query._rows if r.get(field) is not None]
+        return self._query
+
+
+class FakeQuery:
+    """PostgREST-ish query over canned rows. Errors are deferred to execute()."""
+
+    def __init__(self, table, rows, columns):
+        self.table = table
+        self._rows = [dict(r) for r in rows]
+        self._columns = columns  # None = unknown (empty table): no column checks
+        self._limit = None
+        self._error = None
+        self.calls = []
+        self.not_ = _FakeNotProxy(self)
+
+    def _check_column(self, field):
+        if self._columns is not None and field not in self._columns and self._error is None:
+            self._error = RuntimeError(
+                f'column "{field}" of relation "{self.table}" does not exist'
+            )
+
+    def select(self, columns):
+        self.calls.append(("select", columns))
+        return self
+
+    def eq(self, field, value):
+        self.calls.append(("eq", field, value))
+        self._check_column(field)
+        self._rows = [r for r in self._rows if str(r.get(field)) == str(value)]
+        return self
+
+    def neq(self, field, value):
+        self.calls.append(("neq", field, value))
+        self._check_column(field)
+        self._rows = [r for r in self._rows if str(r.get(field)) != str(value)]
+        return self
+
+    def _compare(self, field, value, keep):
+        self._check_column(field)
+        kept = []
+        for r in self._rows:
+            try:
+                if r.get(field) is not None and keep(r.get(field), value):
+                    kept.append(r)
+            except TypeError:
+                pass
+        self._rows = kept
+        return self
+
+    def gt(self, field, value):
+        self.calls.append(("gt", field, value))
+        return self._compare(field, value, lambda a, b: a > b)
+
+    def lt(self, field, value):
+        self.calls.append(("lt", field, value))
+        return self._compare(field, value, lambda a, b: a < b)
+
+    def gte(self, field, value):
+        self.calls.append(("gte", field, value))
+        return self._compare(field, value, lambda a, b: a >= b)
+
+    def lte(self, field, value):
+        self.calls.append(("lte", field, value))
+        return self._compare(field, value, lambda a, b: a <= b)
+
+    def in_(self, field, values):
+        self.calls.append(("in", field, values))
+        self._check_column(field)
+        vals = {str(v) for v in values}
+        self._rows = [r for r in self._rows if str(r.get(field)) in vals]
+        return self
+
+    def ilike(self, field, value):
+        self.calls.append(("ilike", field, value))
+        self._check_column(field)
+        needle = str(value).replace("%", "").lower()
+        self._rows = [r for r in self._rows if needle in str(r.get(field, "")).lower()]
+        return self
+
+    def is_(self, field, value):
+        self.calls.append(("is", field, value))
+        self._check_column(field)
+        if value == "null":
+            self._rows = [r for r in self._rows if r.get(field) is None]
+        return self
+
+    def contains(self, field, values):
+        self.calls.append(("contains", field, values))
+        self._check_column(field)
+        self._rows = [
+            r
+            for r in self._rows
+            if isinstance(r.get(field), list) and all(v in r[field] for v in values)
+        ]
+        return self
+
+    def order(self, *args, **kwargs):
+        self.calls.append(("order", args, kwargs))
+        return self
+
+    def limit(self, n):
+        self.calls.append(("limit", n))
+        self._limit = n
+        return self
+
+    def execute(self):
+        if self._error is not None:
+            raise self._error
+        rows = self._rows[: self._limit] if self._limit is not None else self._rows
+        return SimpleNamespace(data=[dict(r) for r in rows])
+
+
+class FakeTableAdapter:
+    """DatabaseAdapter fake with per-table canned rows and query recording."""
+
+    def __init__(self, tables):
+        self._tables = {name: [dict(r) for r in rows] for name, rows in tables.items()}
+        self.queries = []  # every FakeQuery handed out, in order, for assertions
+
+    def table(self, name):
+        rows = self._tables.get(name)
+        columns = None
+        if rows:
+            columns = set()
+            for r in rows:
+                columns |= r.keys()
+        query = FakeQuery(name, rows or [], columns)
+        if rows is None:
+            query._error = RuntimeError(f'relation "{name}" does not exist')
+        self.queries.append(query)
+        return query
+
+    def rpc(self, function_name, params):
+        raise NotImplementedError("the assembly chain must not call rpc()")
+
+    def queries_for(self, table):
+        return [q for q in self.queries if q.table == table]
+
+
+class AssemblyTestContext(DomainContext):
+    """
+    DomainContext-ONLY implementation (no AgentConfig half) for assembly tests.
+
+    Entity/subdomain shape mirrors StubDomainConfig (items/notes) so the
+    module-level registered stub domain — which session machinery like
+    SessionIdRegistry reads globally — agrees with what this ctx declares.
+    The assembly chain itself only ever sees this instance (state-free, E2).
+    """
+
+    def __init__(
+        self,
+        adapter,
+        *,
+        semantic_notes=None,
+        fk_enrich=None,
+        grades=None,
+        middleware=None,
+        user_profile="",
+        domain_snapshot="",
+    ):
+        self._adapter = adapter
+        self._semantic_notes = (
+            semantic_notes
+            if semantic_notes is not None
+            else {"items": "Items are physical things.", "notes": "Notes attach to items."}
+        )
+        self._fk_enrich = fk_enrich if fk_enrich is not None else {"item_id": ("items", "name")}
+        self._grades = grades
+        self._middleware = middleware
+        self._user_profile = user_profile
+        self._domain_snapshot = domain_snapshot
+
+    @property
+    def name(self) -> str:
+        return "assembly-stub"
+
+    @property
+    def entities(self) -> dict:
+        return {
+            "items": EntityDefinition(type_name="item", table="items"),
+            "notes": EntityDefinition(
+                type_name="note",
+                table="notes",
+                primary_field="title",
+                fk_fields=["item_id"],
+                label_fields=["title"],
+            ),
+        }
+
+    @property
+    def subdomains(self) -> dict:
+        return {
+            "items": SubdomainDefinition(
+                name="items", primary_table="items", related_tables=["notes"]
+            ),
+            "notes": SubdomainDefinition(name="notes", primary_table="notes"),
+        }
+
+    def get_table_format(self, table: str) -> dict:
+        return {}
+
+    def get_fk_enrich_map(self) -> dict:
+        return self._fk_enrich
+
+    def get_field_enums(self) -> dict:
+        return {}
+
+    def get_semantic_notes(self) -> dict:
+        return self._semantic_notes
+
+    def get_fallback_schemas(self) -> dict:
+        return {}
+
+    def get_user_owned_tables(self) -> set:
+        return {"items", "notes"}
+
+    def get_uuid_fields(self) -> set:
+        return {"item_id"}
+
+    def get_subdomain_registry(self) -> dict:
+        return {"items": {"tables": ["items", "notes"]}, "notes": {"tables": ["notes"]}}
+
+    def infer_entity_type_from_artifact(self, artifact: dict) -> str:
+        return "note" if "title" in artifact else "item"
+
+    def compute_entity_label(self, record: dict, entity_type: str, ref: str) -> str:
+        return record.get("name") or record.get("title") or ref
+
+    def get_subdomain_aliases(self) -> dict:
+        return {}
+
+    def get_crud_middleware(self):
+        return self._middleware
+
+    def get_audience_grades(self) -> dict:
+        if self._grades is not None:
+            return self._grades
+        return super().get_audience_grades()
+
+    async def get_user_profile(self, user_id: str) -> str:
+        return self._user_profile
+
+    async def get_domain_snapshot(self, user_id: str) -> str:
+        return self._domain_snapshot
+
+    def get_db_adapter(self):
+        return self._adapter
+
+
+@pytest.fixture
+def assembly_ctx_factory():
+    """Factory: (tables, **ctx_options) -> (AssemblyTestContext, FakeTableAdapter)."""
+
+    def _make(tables, **options):
+        adapter = FakeTableAdapter(tables)
+        return AssemblyTestContext(adapter, **options), adapter
+
+    return _make
 
 
 @pytest.fixture
