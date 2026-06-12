@@ -6,16 +6,16 @@ How Alfred's core orchestration engine and domain-specific implementations relat
 
 ## 1. Package Structure
 
-Alfred is split into a core engine and domain packages in a mono-repo. Two domains exist: Kitchen (reference implementation) and FPL (validates the abstraction).
+Alfred core is a standalone package (`alfredagain` on PyPI). This repo's `src/` holds **only** core; domains (Kitchen — reference implementation, FPL — validates the abstraction) are separate packages in their own repos that depend on `alfredagain`.
 
 ```
 src/
 ├── alfred/                          ← core orchestration (domain-agnostic)
 │   ├── agents/                      AgentProtocol, AgentRouter (2 files)
-│   ├── context/                     Context builders, entity tracking, reasoning (5 files)
+│   ├── context/                     Context builders, entity tracking, reasoning + state-free assembly seam (6 files)
 │   ├── core/                        SessionIdRegistry, modes, payload_compiler (4 files)
 │   ├── db/                          DatabaseAdapter protocol (2 files)
-│   ├── domain/                      DomainConfig ABC + registration (2 files)
+│   ├── domain/                      DomainContext + AgentConfig + DomainConfig composition, grades, registration (5 files)
 │   ├── graph/
 │   │   ├── nodes/                   act, reply, router, summarize, think, understand (7 files)
 │   │   ├── state.py                 AlfredState TypedDict + all data models
@@ -29,69 +29,37 @@ src/
 │   │   └── templates/               11 core .md templates (1,635 lines)
 │   ├── tools/                       CRUD executor, schema builder, normalization (5 files)
 │   └── config.py                    CoreSettings (OpenAI, LangSmith, env)
-│
-└── alfred_kitchen/                   ← kitchen domain implementation
-    ├── background/                   Profile builder, dashboard caching (2 files)
-    ├── db/                           Supabase client, request context (3 files)
-    ├── domain/
-    │   ├── __init__.py               KitchenConfig (673 lines) + KITCHEN_DOMAIN singleton
-    │   ├── compilers.py              RecipeCompiler, MealPlanCompiler, etc.
-    │   ├── crud_middleware.py         KitchenCRUDMiddleware (semantic search, auto-includes)
-    │   ├── examples.py               Contextual examples per subdomain
-    │   ├── formatters.py             Record formatting (recipes, inventory, etc.)
-    │   ├── handoff.py                Cook/brainstorm handoff models
-    │   ├── personas.py               Subdomain personas and headers
-    │   ├── schema.py                 Field enums, fallback schemas, subdomain registry
-    │   ├── modes/                    cook.py, brainstorm.py (bypass mode handlers)
-    │   ├── prompts/                  8 .py + 3 .md files (2,443 lines)
-    │   └── tools/                    ingredient_lookup.py, ingredient_resolver.py
-    ├── models/                       Pydantic entities (Recipe, Inventory, etc.) (2 files)
-    ├── recipe_import/                Scrapers, parsers (7 files)
-    ├── web/                          FastAPI app, routes, auth, sessions (10 files)
-    ├── config.py                     KitchenSettings (extends CoreSettings with Supabase)
-    ├── main.py                       CLI entry point
-    └── server.py                     Health check / server startup
 ```
 
-### Sizing
-
-| Package | .py Files | Purpose |
-|---------|-----------|---------|
-| `alfred` | ~43 | Domain-agnostic orchestration, LLM pipeline, CRUD execution |
-| `alfred_kitchen` | ~51 | Kitchen entities, formatters, prompts, DB client, web layer |
+A domain package supplies what core deliberately leaves out: entity definitions, subdomain registry, personas/examples/prompt content, formatters, a DB adapter, CRUD middleware, and (optionally) bypass-mode handlers — all behind the `DomainConfig` protocol. See [domain-implementation-guide.md](domain-implementation-guide.md) for the full shape of a domain package.
 
 ---
 
 ## 2. The DomainConfig Protocol
 
-`DomainConfig` at [base.py:156](src/alfred/domain/base.py#L156) is an ABC that every domain must implement. It has **75 methods** organized into 8 concern areas:
+`DomainConfig` ([domain/base.py](src/alfred/domain/base.py)) is an ABC that every domain must implement. Since 2.8.0 it is **composed from two protocols** and has **80 members**:
 
-### Method Census
+```python
+class DomainConfig(DomainContext, AgentConfig): ...   # defines nothing directly
+```
 
-| Concern Area | Abstract | Default | Total | What They Provide |
-|-------------|----------|---------|-------|-------------------|
-| Core properties | 3 | 2 | 5 | `name`, `entities`, `subdomains`, `table_to_type`, `type_to_table` |
-| Prompt/persona | 2 | 1 | 3 | `get_persona()`, `get_examples()`, `get_act_subdomain_header()` |
-| Schema/FK | 11 | 0 | 11 | Field enums, fallback schemas, scope config, FK enrichment, user-owned tables |
-| CRUD | 0 | 1 | 1 | `get_crud_middleware()` (optional) |
-| Entity processing | 3 | 10 | 13 | Entity labels, type inference, archive keys, tracking, content markers |
-| Reply formatting | 1 | 9 | 10 | Subdomain formatters, strip fields, record formatting (context + reply), continuity guidance |
-| Mode/agent | 2 | 4 | 6 | `bypass_modes`, `default_agent`, agents, router, compilers, LLM config |
-| Prompts | 0 | 23 | 23 | System prompt, node-specific content/injection (Think, Act, Reply, Understand, Summarize, Router), tool-enabled step types, custom tools, CRUD reference, step templates, filter schema |
-| User context | 0 | 3 | 3 | `get_user_profile()`, `get_domain_snapshot()`, `get_subdomain_guidance()` |
-| Database | 1 | 0 | 1 | `get_db_adapter()` |
-| Handoff | 1 | 1 | 2 | `get_handoff_result_model()`, `get_handoff_system_prompts()` |
-| **Total** | **23** | **52** | **75** | |
+### Member Census
 
-**23 abstract methods** must be implemented. **52 default methods** provide sensible fallbacks — a new domain can start with just the abstract methods and progressively override defaults.
+| Protocol | File | Members | Abstract | Default | Concern |
+|----------|------|---------|----------|---------|---------|
+| `DomainContext` | [domain/context.py](src/alfred/domain/context.py) | 36 | 15 | 21 | Knowledge & data shaping: entities, subdomains, schema/FK config, CRUD middleware (`pre_write` lives here), formatting, strip fields, audience grades, table notes |
+| `AgentConfig` | [domain/agent.py](src/alfred/domain/agent.py) | 44 | 8 | 36 | Pipeline & LLM: prompt content/injection, personas, modes, agents, tools, LLM config, handoff |
+| **`DomainConfig` (composed)** | [domain/base.py](src/alfred/domain/base.py) | **80** | **23** | **57** | |
 
-> **Note:** The concern area breakdown above may have minor row-level discrepancies — the totals (23/52/75) are verified against the actual code.
+**23 abstract members** must be implemented. **57 default members** provide sensible fallbacks — a new domain can start with just the abstract members and progressively override defaults. Substrate-only consumers (shaped reads, no LLM pipeline) implement `DomainContext` alone.
+
+> **Authoritative count:** the sort-freeze test in [tests/core/test_protocol_split.py](tests/core/test_protocol_split.py) pins every member to its bucket — when the census moves, that test fails and this table gets updated. Per-hook documentation by effect lives in [injection-map.md](injection-map.md).
 
 ### Supporting Dataclasses
 
 Five dataclasses underpin the protocol:
 
-**`EntityDefinition`** at [base.py:26](src/alfred/domain/base.py#L26) — describes one entity type:
+**`EntityDefinition`** in [domain/context.py](src/alfred/domain/context.py) — describes one entity type:
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -104,7 +72,7 @@ Five dataclasses underpin the protocol:
 | `nested_relations` | `list[str] \| None` | Related tables to auto-include in reads |
 | `detail_tracking` | `bool` | Whether to track summary vs full reads |
 
-**`SubdomainDefinition`** at [base.py:55](src/alfred/domain/base.py#L55) — logical table grouping:
+**`SubdomainDefinition`** in [domain/context.py](src/alfred/domain/context.py) — logical table grouping:
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -113,7 +81,7 @@ Five dataclasses underpin the protocol:
 | `related_tables` | `list[str]` | Other tables in this subdomain |
 | `description` | `str` | Human-readable description for Think prompt |
 
-**`ReadPreprocessResult`** at [base.py:76](src/alfred/domain/base.py#L76) — returned by `CRUDMiddleware.pre_read()`:
+**`ReadPreprocessResult`** in [domain/context.py](src/alfred/domain/context.py) — returned by `CRUDMiddleware.pre_read()`:
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -123,7 +91,7 @@ Five dataclasses underpin the protocol:
 | `or_conditions` | `list[str] \| None` | Additional OR conditions |
 | `short_circuit_empty` | `bool` | Return `[]` without querying |
 
-**`ToolDefinition`** at [base.py:97](src/alfred/domain/base.py#L97) — a domain-provided tool:
+**`ToolDefinition`** in [domain/agent.py](src/alfred/domain/agent.py) — a domain-provided tool:
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -132,7 +100,7 @@ Five dataclasses underpin the protocol:
 | `params_schema` | `str` | Human-readable param docs for Act prompt |
 | `handler` | `Callable` | Async handler: `(params, user_id, ToolContext) -> Any` |
 
-**`ToolContext`** at [base.py:116](src/alfred/domain/base.py#L116) — context passed to custom tool handlers:
+**`ToolContext`** in [domain/agent.py](src/alfred/domain/agent.py) — context passed to custom tool handlers:
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -145,8 +113,8 @@ Five dataclasses underpin the protocol:
 
 Two properties are auto-derived from `entities` — domains get these for free:
 
-- `table_to_type` at [base.py:224](src/alfred/domain/base.py#L224) — maps `"recipes"` → `"recipe"`
-- `type_to_table` at [base.py:234](src/alfred/domain/base.py#L234) — maps `"recipe"` → `"recipes"`
+- `table_to_type` ([domain/context.py](src/alfred/domain/context.py)) — maps `"recipes"` → `"recipe"`
+- `type_to_table` ([domain/context.py](src/alfred/domain/context.py)) — maps `"recipe"` → `"recipes"`
 
 ---
 
@@ -157,17 +125,18 @@ Domain registration uses a simple global pattern in [domain/__init__.py](src/alf
 ```python
 _current_domain: DomainConfig | None = None
 
-def register_domain(domain: DomainConfig) -> None:      # line 29
+def register_domain(domain: DomainConfig) -> None:
+    GradeRegistry.from_context(domain)  # validates audience grades; raises GradeRegistryError
     global _current_domain
     _current_domain = domain
 
-def get_current_domain() -> DomainConfig:                # line 43
+def get_current_domain() -> DomainConfig:
     if _current_domain is None:
         raise RuntimeError("No domain registered. Call register_domain() at app startup.")
     return _current_domain
 ```
 
-No fallback, no auto-import. If no domain is registered, core raises `RuntimeError`. This enforces explicit registration at startup.
+No fallback, no auto-import. If no domain is registered, core raises `RuntimeError`. This enforces explicit registration at startup. Since 2.8.0, registration also validates the domain's audience-grade declarations (`external ⊇ reply` per table) and refuses to register on failure.
 
 ### How Domains Register
 
@@ -293,16 +262,19 @@ These have sensible defaults that many domains won't need to change:
 
 This is the foundational architectural rule. It means:
 
-- `src/alfred/` has zero imports from `src/alfred_kitchen/`
-- `src/alfred_kitchen/` imports freely from `src/alfred/`
+- `src/alfred/` has zero imports from any domain package (`alfred_kitchen`, `alfred_fpl`, …)
+- Domain packages import freely from `alfred`
 - Core accesses domain behavior exclusively through `get_current_domain()` → `DomainConfig` methods
 
 ### Enforcement
 
 ```bash
-# This must return zero hits:
+# These must return zero hits:
 grep -rn "from alfred_kitchen" src/alfred/ --include="*.py"
+grep -rn "from alfred_fpl" src/alfred/ --include="*.py"
 ```
+
+Additionally, `alfred.context` (the substrate seam) must import cleanly with **no registered domain** and pull in no langgraph/instructor — enforced by subprocess tests in [tests/core/test_import_isolation.py](tests/core/test_import_isolation.py).
 
 There are no exceptions — core has zero imports from any domain package. All backwards-compat shims were removed during the FPL domain build.
 
@@ -318,9 +290,9 @@ Four protocols define the extension surface:
 
 ### DomainConfig
 
-**File:** [domain/base.py:156](src/alfred/domain/base.py#L156) (1,135 lines)
+**Files:** [domain/base.py](src/alfred/domain/base.py) (75-line composition shim) over [domain/context.py](src/alfred/domain/context.py) (603 lines) and [domain/agent.py](src/alfred/domain/agent.py) (598 lines)
 
-The central protocol. 75 methods across 8 concern areas (see section 2). A domain implements this to plug into Alfred's pipeline.
+The central protocol. 80 members across the two-protocol split (see section 2). A domain implements this to plug into Alfred's pipeline; substrate-only consumers implement `DomainContext` alone.
 
 ### DatabaseAdapter
 
@@ -341,7 +313,7 @@ Kitchen implements this by returning the Supabase client from `get_client()`.
 
 ### CRUDMiddleware
 
-**File:** [domain/base.py:97](src/alfred/domain/base.py#L97)
+**File:** [domain/context.py](src/alfred/domain/context.py)
 
 ```python
 class CRUDMiddleware:
@@ -357,7 +329,7 @@ See [crud-and-database.md](crud-and-database.md) for the full middleware archite
 
 ### EntityDefinition
 
-**File:** [domain/base.py:26](src/alfred/domain/base.py#L26)
+**File:** [domain/context.py](src/alfred/domain/context.py)
 
 Configuration dataclass for entity types. Not a protocol — it's a value object that domains instantiate. 8 fields control how core handles each entity type (ref naming, FK tracking, nested relations, detail levels).
 
@@ -407,9 +379,10 @@ Kitchen implements all 23 abstract methods and overrides ~20 defaults across 673
 
 | File | Lines | Role |
 |------|-------|------|
-| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig ABC, EntityDefinition, SubdomainDefinition, CRUDMiddleware |
-| [src/alfred/domain/__init__.py](src/alfred/domain/__init__.py) | 79 | `register_domain()`, `get_current_domain()` |
+| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 75 | `DomainConfig` composition shim + historical re-exports |
+| [src/alfred/domain/context.py](src/alfred/domain/context.py) | 603 | `DomainContext`, EntityDefinition, SubdomainDefinition, CRUDMiddleware, ReadPreprocessResult |
+| [src/alfred/domain/agent.py](src/alfred/domain/agent.py) | 598 | `AgentConfig`, ToolDefinition, ToolContext |
+| [src/alfred/domain/grades.py](src/alfred/domain/grades.py) | 122 | StripSet, GradeRegistry, grade errors |
+| [src/alfred/domain/__init__.py](src/alfred/domain/__init__.py) | 75 | `register_domain()` (validates grades), `get_current_domain()` |
 | [src/alfred/db/adapter.py](src/alfred/db/adapter.py) | 53 | DatabaseAdapter protocol |
 | [src/alfred/db/__init__.py](src/alfred/db/__init__.py) | 13 | Exports `DatabaseAdapter` protocol |
-| [src/alfred_kitchen/__init__.py](src/alfred_kitchen/__init__.py) | 16 | Import-time domain registration |
-| [src/alfred_kitchen/domain/__init__.py](src/alfred_kitchen/domain/__init__.py) | 673 | KitchenConfig implementation + KITCHEN_DOMAIN singleton |

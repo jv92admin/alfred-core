@@ -1,11 +1,7 @@
 """
-Alfred V2 - A modern LangGraph-based multi-agent assistant.
+Alfred - a domain-agnostic LLM orchestration engine built on LangGraph.
 
-Domains:
-- Pantry: Kitchen inventory, recipes, meal planning
-- Coach: Fitness tracking, workout planning (future)
-- Cellar: Wine collection management (future)
+Domains are separate packages: implement DomainConfig and call register_domain().
 """
 
-__version__ = "2.4.0"
-
+__version__ = "2.8.0"

@@ -129,7 +129,7 @@ For intent-based queries where exact keywords won't work, use the `similar` oper
 {
   "table": "items",
   "filters": [
-    {"field": "_semantic", "op": "similar", "value": "light summer dinner"}
+    {"field": "_semantic", "op": "similar", "value": "budget-friendly options"}
   ],
   "limit": 10
 }
@@ -139,7 +139,7 @@ Combines with other filters — semantic narrowing happens first, then remaining
 ```json
 {
   "filters": [
-    {"field": "_semantic", "op": "similar", "value": "quick weeknight meals"},
+    {"field": "_semantic", "op": "similar", "value": "quick low-effort options"},
     {"field": "tags", "op": "contains", "value": ["easy"]}
   ]
 }

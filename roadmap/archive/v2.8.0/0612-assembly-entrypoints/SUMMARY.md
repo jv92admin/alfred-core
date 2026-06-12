@@ -135,6 +135,6 @@ module doesn't).
 
 ## Shipped
 
-- **Version:** (filled on archive — ships in A4's additive minor release)
-- **Commits:** (filled on archive)
-- **Date:** (filled on archive)
+- **Version:** 2.8.0
+- **Commits:** 6b85a63 (feature)
+- **Date:** 2026-06-12

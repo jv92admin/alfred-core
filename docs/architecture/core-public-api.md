@@ -44,6 +44,32 @@ register_domain(my_domain)
 
 [workflow.py:427](src/alfred/graph/workflow.py#L427) — builds the LangGraph `StateGraph`. Called internally by the entry points above. Not typically called by domains directly.
 
+### Substrate: `alfred.context` (state-free assembly seam)
+
+Added in 2.8.0 for external consumers (e.g. MCP servers) that need shaped reads without the LLM pipeline. Importing `alfred.context` never pulls in langgraph/instructor and never requires a registered domain — enforced by subprocess isolation tests ([test_import_isolation.py](tests/core/test_import_isolation.py)).
+
+```python
+from alfred.context import (
+    # the substrate protocol — the knowledge/shaping half of DomainConfig
+    DomainContext,
+    # async, state-free entrypoints (no AlfredState, no session, no LLM on any path)
+    assemble_entity_context,      # one entity by id, shaped
+    assemble_subdomain_read,      # filtered table read, shaped
+    ShapedPayload,                # frozen result: header, records, table, count, truncated, grade, schema_version
+    SCHEMA_VERSION,               # current payload schema version: "1"
+    # identity policies (identity is a policy parameter, not a payload property)
+    IdentityPolicy, identity_passthrough, identity_drop_ids,
+    # loud typed errors — invalid input never produces a silent empty read
+    AssemblyError, FilterValidationError, UnknownEntityTypeError,
+    UnknownSubdomainError, TableNotInSubdomainError, RecordNotFoundError,
+    # audience grades — domain-declared strip sets; core validates external ⊇ reply at registration
+    GRADE_REPLY, GRADE_EXTERNAL, StripSet, GradeRegistry,
+    GradeError, GradeRegistryError, UnknownGradeError,
+)
+```
+
+Both entrypoints take an explicit `DomainContext` (no global state), validate filters and grade before any I/O, and return a `ShapedPayload` (`schema_version` bump policy documented in [context/assembly.py](src/alfred/context/assembly.py)'s module docstring). Richer consumers compose the underlying chain links directly from `alfred.context.assembly` — the entrypoints are thin compositions over that chain, not the chain itself.
+
 ---
 
 ## 2. Capabilities Table
@@ -74,11 +100,11 @@ What core gives a domain for free:
 
 These are the protocols and hooks a domain implements to customize core behavior:
 
-### DomainConfig (75 methods)
+### DomainConfig (80 members)
 
-[domain/base.py:156](src/alfred/domain/base.py#L156) — the central protocol. See [core-domain-architecture.md](core-domain-architecture.md) for the full method census.
+[domain/base.py](src/alfred/domain/base.py) — the central protocol, composed since 2.8.0 from two protocols: `DomainContext` ([domain/context.py](src/alfred/domain/context.py) — knowledge & data shaping) and `AgentConfig` ([domain/agent.py](src/alfred/domain/agent.py) — pipeline & LLM concerns). See [core-domain-architecture.md](core-domain-architecture.md) for the full method census.
 
-23 abstract methods define what a domain **is** (entities, subdomains, personas). 51 default methods provide fallbacks that a domain can progressively override.
+23 abstract members define what a domain **is** (entities, subdomains, personas). 57 default members provide fallbacks that a domain can progressively override. Substrate-only consumers (shaped reads, no LLM pipeline) can implement `DomainContext` alone.
 
 ### DatabaseAdapter
 
@@ -94,7 +120,7 @@ Returned by `DomainConfig.get_db_adapter()`. Core's CRUD executor calls `adapter
 
 ### CRUDMiddleware
 
-[domain/base.py:97](src/alfred/domain/base.py#L97) — optional query intelligence layer.
+[domain/context.py](src/alfred/domain/context.py) — optional query intelligence layer (lives on the `DomainContext` side of the split).
 
 ```python
 class CRUDMiddleware:
@@ -163,29 +189,21 @@ These are internal to core — domains never import or interact with them direct
 
 ---
 
-## 5. Multi-Repo Extraction
+## 5. Packaging
 
-The codebase is currently a mono-repo with both packages in `src/`. The architecture supports extracting `alfred` into a standalone `pip install alfred` package.
-
-### Current State
-
-Single `pyproject.toml` at repo root builds both packages:
+Core is a standalone PyPI package: `pip install alfredagain`, imported as `import alfred`. The wheel builds **only** `src/alfred` — domain packages (kitchen, FPL, …) live in their own repos and depend on `alfredagain`:
 
 ```toml
 [project]
-name = "alfred"
+name = "alfredagain"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/alfred", "src/alfred_kitchen", "src/alfred_fpl", "src/onboarding"]
+packages = ["src/alfred"]
 ```
-
-### What Standalone `alfred` Would Need
 
 **Dependencies** (core only — no Supabase, no FastAPI):
 
 ```toml
-[project]
-name = "alfred"
 dependencies = [
     "langgraph>=0.2.0",
     "langchain-openai>=0.2.0",
@@ -211,11 +229,8 @@ grep -rn "from alfred_fpl" src/alfred/ --include="*.py"
 
 - `db/__init__.py` exports only `DatabaseAdapter` — no `get_client` shim
 - `config.py` exports only `CoreSettings`, `get_core_settings()`, `core_settings` — no domain settings shim
-- `tools/schema.py` routes through `get_current_domain()` — clean indirection via `DomainConfig`
-
-### When to Extract
-
-The FPL domain has validated the protocol — two production domains (Kitchen, FPL) now use the same core. Extraction into a standalone `pip install alfred` package is feasible whenever the mono-repo approach becomes a constraint.
+- `tools/schema.py` routes through `get_current_domain()` — clean indirection via `DomainConfig` (the legacy module-level constant aliases were removed in 2.8.0)
+- `alfred.context` imports no langgraph/instructor and needs no registered domain (subprocess-enforced)
 
 ---
 
@@ -223,10 +238,14 @@ The FPL domain has validated the protocol — two production domains (Kitchen, F
 
 | File | Lines | Role |
 |------|-------|------|
-| [src/alfred/graph/workflow.py](src/alfred/graph/workflow.py) | 993 | Entry points: `run_alfred_streaming()`, `run_alfred()`, `create_alfred_graph()` |
-| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 1,135 | DomainConfig protocol (75 methods) |
-| [src/alfred/domain/__init__.py](src/alfred/domain/__init__.py) | 79 | `register_domain()`, `get_current_domain()` |
+| [src/alfred/graph/workflow.py](src/alfred/graph/workflow.py) | 875 | Entry points: `run_alfred_streaming()`, `run_alfred()`, `create_alfred_graph()` |
+| [src/alfred/domain/base.py](src/alfred/domain/base.py) | 75 | DomainConfig composition shim (`DomainContext` + `AgentConfig`) + re-exports |
+| [src/alfred/domain/context.py](src/alfred/domain/context.py) | 603 | DomainContext protocol (knowledge & shaping) + CRUDMiddleware |
+| [src/alfred/domain/agent.py](src/alfred/domain/agent.py) | 598 | AgentConfig protocol (pipeline & LLM) + ToolDefinition/ToolContext |
+| [src/alfred/domain/grades.py](src/alfred/domain/grades.py) | 122 | StripSet, GradeRegistry, grade errors |
+| [src/alfred/context/assembly.py](src/alfred/context/assembly.py) | 420 | State-free entrypoints, ShapedPayload, chain links, identity policies |
+| [src/alfred/domain/__init__.py](src/alfred/domain/__init__.py) | 75 | `register_domain()` (validates grades), `get_current_domain()` |
 | [src/alfred/db/adapter.py](src/alfred/db/adapter.py) | 53 | DatabaseAdapter protocol |
 | [src/alfred/core/payload_compiler.py](src/alfred/core/payload_compiler.py) | 174 | SubdomainCompiler, PayloadCompilerRegistry |
-| [src/alfred/agents/base.py](src/alfred/agents/base.py) | 319 | AgentProtocol, AgentRouter, MultiAgentOrchestrator |
-| [pyproject.toml](pyproject.toml) | 81 | Current mono-repo build config |
+| [src/alfred/agents/base.py](src/alfred/agents/base.py) | 250 | AgentProtocol, AgentRouter, MultiAgentOrchestrator |
+| [pyproject.toml](pyproject.toml) | — | Build config (wheel = `src/alfred` only) |

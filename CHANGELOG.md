@@ -6,6 +6,55 @@ Format: [Keep a Changelog](https://keepachangelog.com/). Versioning: [SemVer](ht
 
 ---
 
+## [2.8.0] — 2026-06-12
+
+### Added
+- **Protocol split: `DomainContext` / `AgentConfig`** — the 80-member `DomainConfig` ABC
+  is now composed from two protocols: `DomainContext` (knowledge & data shaping, incl.
+  `CRUDMiddleware.pre_write`) and `AgentConfig` (pipeline & LLM concerns).
+  `class DomainConfig(DomainContext, AgentConfig)` — existing domains work unchanged,
+  zero migration. New seam import: `from alfred.context import DomainContext` is
+  guaranteed free of langgraph/instructor imports (enforced by isolation tests).
+- **Audience-grade registry** — domains declare named grades as field strip-sets via the
+  new defaulted `DomainContext.get_audience_grades()` hook. Core ships well-known grades
+  `"reply"` and `"external"`; `register_domain()` validates `external ⊇ reply` per table
+  and fails loudly (`GradeRegistryError`). `StripSet`, `GradeRegistry`, and the 7 public
+  grade names are exported from `alfred.domain` and `alfred.context`.
+- **State-free assembly entrypoints** — `async assemble_entity_context()` and
+  `async assemble_subdomain_read()` in `alfred.context`: no `AlfredState`, no session, no
+  LLM call on any path. Return a frozen `ShapedPayload` (`schema_version="1"` — versioned
+  external contract). Core validates filters (loud typed errors, never a silent empty
+  read); identity handling is a policy parameter; the underlying chain links are
+  importable from `alfred.context.assembly` for richer consumers.
+- **`get_table_notes(table)` hook** — defaulted `DomainContext` member supplying
+  per-table semantic notes for assembly headers (defaults to the owning subdomain's
+  notes; zero migration).
+
+### Removed
+- **Legacy domain-backed module aliases** — `FIELD_ENUMS`, `SEMANTIC_NOTES`,
+  `FALLBACK_SCHEMAS`, `SUBDOMAIN_SCOPE`, `SUBDOMAIN_REGISTRY`, `SUBDOMAIN_EXAMPLES` are
+  no longer importable from `alfred.tools.schema` or `alfred.tools` (the module
+  `__getattr__` alias layers are deleted). Removed in a minor release because the names
+  were undocumented, had zero grep-verified consumers, their documented consumer
+  (`web/schema_routes.py`) was already deleted, and they were broken-by-design without a
+  registered domain. Use the `DomainConfig` accessor methods instead
+  (`get_field_enums()`, `get_subdomain_registry()`, …).
+
+### Changed
+- **Built-in prompt defaults de-domained** — the built-in `FILTER_SCHEMA` example values
+  (`["milk", "eggs"]` → generic, `"%chicken%"` → generic) and the `act/read.md`
+  semantic-search examples (`"quick weeknight meals"`, `"light summer dinner"` → generic)
+  no longer assume a kitchen domain. This changes default prompt bytes only for domains
+  that don't override `get_filter_schema()` or the Act templates; overriding domains are
+  unaffected.
+
+### Fixed
+- **Import-time domain coupling** — importing `alfred.tools` (and therefore
+  `alfred.context`) no longer requires a registered domain. Domain-free import of the
+  seam module is enforced by subprocess isolation tests.
+- **`alfred.__version__`** — was stale at `"2.4.0"`; now matches the package version and
+  is pinned to the installed metadata by a new version-sync test.
+
 ## [2.7.0] — 2026-03-12
 
 ### Added

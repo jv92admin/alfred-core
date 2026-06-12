@@ -6,8 +6,8 @@ Provides:
 - Auto-generation of table schemas from database
 - Schema caching for performance
 
-Kitchen-specific constants (FIELD_ENUMS, SEMANTIC_NOTES, etc.) live in
-alfred.domain.kitchen.schema. Access them via DomainConfig methods.
+Domain-specific schema content (field enums, semantic notes, fallback schemas)
+is provided by the registered domain via DomainConfig methods.
 """
 
 import time
@@ -16,8 +16,7 @@ from typing import Any
 # =============================================================================
 # Domain-Aware Accessors
 # =============================================================================
-# Constants moved to alfred.domain.kitchen.schema (Phase 3a).
-# Functions below access them through domain config.
+# Functions below access domain-specific schema content through domain config.
 
 
 def _get_domain():
@@ -292,8 +291,8 @@ Structure: `{"field": "<column>", "op": "<operator>", "value": <value>}`
 |----------|-------------|---------|
 | `=` | Exact match | `{"field": "id", "op": "=", "value": "uuid"}` |
 | `>` `<` `>=` `<=` | Comparison | `{"field": "quantity", "op": ">", "value": 5}` |
-| `in` | Value in array | `{"field": "name", "op": "in", "value": ["milk", "eggs"]}` |
-| `ilike` | Pattern match (% = wildcard) | `{"field": "name", "op": "ilike", "value": "%chicken%"}` |
+| `in` | Value in array | `{"field": "status", "op": "in", "value": ["active", "pending"]}` |
+| `ilike` | Pattern match (% = wildcard) | `{"field": "name", "op": "ilike", "value": "%draft%"}` |
 | `is_null` | Null check | `{"field": "expiry_date", "op": "is_null", "value": true}` |
 | `similar` | **Semantic search** (if supported by domain) | `{"field": "_semantic", "op": "similar", "value": "budget-friendly options"}` |
 
@@ -313,7 +312,7 @@ For intent-based queries, use the `_semantic` filter (availability depends on do
 """
 
 # =============================================================================
-# Kitchen Constants — Moved to alfred.domain.kitchen.schema (Phase 3a)
+# Domain Constants — provided by the registered domain
 # Access via domain config methods or _get_* helpers below.
 # =============================================================================
 
@@ -336,30 +335,6 @@ def _get_fallback_schemas():
 def _get_subdomain_examples():
     """Get SUBDOMAIN_EXAMPLES from domain config."""
     return _get_domain().get_subdomain_examples()
-
-
-# Legacy constant access — for imports like `from alfred.tools.schema import FIELD_ENUMS`
-# These are consumed by web/schema_routes.py and tools/__init__.py. Redirect to domain.
-def __getattr__(name):
-    """Module-level __getattr__ for lazy constant access via domain config.
-
-    The unknown-name check MUST precede the domain lookup: the import system
-    probes missing attributes (e.g. ``__path__`` while resolving a fromlist),
-    and resolving the domain first turns that benign AttributeError into a
-    "No domain registered" RuntimeError — which made importing this module
-    (and any package that imports it) require a registered domain.
-    """
-    _ATTR_MAP = {
-        "FIELD_ENUMS": "get_field_enums",
-        "SEMANTIC_NOTES": "get_semantic_notes",
-        "FALLBACK_SCHEMAS": "get_fallback_schemas",
-        "SUBDOMAIN_SCOPE": "get_subdomain_scope",
-        "SUBDOMAIN_REGISTRY": "get_subdomain_registry",
-        "SUBDOMAIN_EXAMPLES": "get_subdomain_examples",
-    }
-    if name not in _ATTR_MAP:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    return getattr(_get_domain(), _ATTR_MAP[name])()
 
 
 def _get_filter_schema() -> str:
@@ -436,7 +411,7 @@ async def get_schema_with_fallback(subdomain: str) -> str:
 
 async def validate_schema_drift() -> list[str]:
     """
-    Compare FALLBACK_SCHEMAS to actual DB schema and report drift.
+    Compare the domain's fallback schemas to the actual DB schema and report drift.
 
     Call this on startup to catch schema mismatches early.
 

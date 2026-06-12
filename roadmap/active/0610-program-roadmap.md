@@ -1,6 +1,6 @@
 # Core Program Roadmap — Substrate & Shapes (Sequential Feature List)
 
-**Status:** In Progress — Track A: A0 ✅ A1 ✅ A2 ✅ A3 ✅ (verified 2026-06-12) · next: **A4 (release)** · B1, C1 startable
+**Status:** Track A COMPLETE — A0–A4 ✅ + X2 ✅ (v2.8.0, 2026-06-12) · next: B1, C1 startable · D-track full speed after ledge pin
 **Tracks:** 4 parallel + 1 cross-cutting · 19 features
 **Supersedes:** the WI-table in [0610-shapes-substrate-program.md](0610-shapes-substrate-program.md) §7 (narrative docs remain the rationale; THIS doc is the build order)
 
@@ -31,7 +31,7 @@ C-1…C-10) · [0610-mode-language.md](0610-mode-language.md) (shapes S1–S5, E
 | A1 | **Protocol split (C-1)** | `DomainContext` + `AgentConfig` protocols; `DomainConfig` = composed (Kitchen/FPL untouched, zero migration); **`pre_write` lands in `DomainContext`** (amendment of record); CI import-linter: `alfred.context` imports no langgraph/instructor | ✅ 2026-06-11 — PM-verified ([0611-protocol-split](0611-protocol-split/SUMMARY.md): 78 members 34/44, 23 abstract frozen, 221 tests, mypy 368→368, seam import live) |
 | A2 | **Grade registry (C-6 minimal)** | Domain declares named grades as strip sets; core validates `external ⊇ reply` at registration (loud failure); grades applied at assembly time | ✅ 2026-06-11 — PM-verified ([0611-grade-registry](0611-grade-registry/SUMMARY.md): `grades.py` stdlib-only, `get_audience_grades` defaulted (35/44, abstract unchanged), 234 tests, mypy 368→368, seam exports canonical, Guardrail #3 pinned by equality test) |
 | A3 | **State-free entrypoints (E2/C-5)** | `assemble_entity_context` / `assemble_subdomain_read` per seam contract, built as thin compositions over the internal assembly chain (identity policy + grade as parameters); core-side filter validation; no AlfredState/session/LLM on any path (E5 test); **3 golden consumer fixtures green (S1-ref read, S3 recipe, S5 preload — see Compatibility Guardrail)** | ✅ 2026-06-12 — PM-verified ([0612-assembly-entrypoints](0612-assembly-entrypoints/SUMMARY.md): `context/assembly.py` async per amended §1, all 3 fixtures green, 266 tests, mypy 368→368, S1 path untouched by construction; deviation accepted: import-time-domain-coupling fix in schema.py/tools — behavior-identical for registered domains, graduated to PITFALLS) |
-| A4 | **Release: additive minor** | Tests green incl. new conformance tests (E2, E5-C0, import isolation, grade ordering); CHANGELOG; ledge pins min version; `/doc-review` run | Not Started |
+| A4 | **Release: additive minor** | Tests green incl. new conformance tests (E2, E5-C0, import isolation, grade ordering); CHANGELOG; ledge pins min version; `/doc-review` run | ✅ 2026-06-12 — **v2.8.0** ([0612-release-2.8.0](0612-release-2.8.0/SUMMARY.md): 267 tests, mypy 368→366, doc-review queue cleared, X2 rode along per owner decision; ledge pin handled by Core PM after publish) |
 
 ## Track B — Write-Path Correctness 🟠 (starts now, small)
 
@@ -73,7 +73,7 @@ C-1…C-10) · [0610-mode-language.md](0610-mode-language.md) (shapes S1–S5, E
 | # | Item | Definition of done | Status |
 |---|------|--------------------|--------|
 | X1 | **Conformance checklist E1–E11** | One numbered doc in core; every other doc references by number; each E gains a test as its feature lands (E1→B1, E2/E5→A3/A4, E4→B2, E8→D2, E9→A3+D2, E10→D6, E11→B3) | Not Started |
-| X2 | **Doc debt + legacy alias deletion** | core-public-api.md stale "4 wheel targets" fixed; P5 kitchen-residue sweep (`"quick weeknight meals"`, `["milk","eggs"]`, `__init__.py` Pantry docstring, crud.py "ingredient enrichment"); **delete the legacy domain-backed alias layer** (schema.py `__getattr__` + the 6 constant names, tools/`__init__` lazy hook + `__all__` entries — zero consumers grep-verified, `web/` is gone; one CHANGELOG "Removed" line, no deprecation cycle) | Not Started |
+| X2 | **Doc debt + legacy alias deletion** | core-public-api.md stale "4 wheel targets" fixed; P5 kitchen-residue sweep (`"quick weeknight meals"`, `["milk","eggs"]`, `__init__.py` Pantry docstring, crud.py "ingredient enrichment"); **delete the legacy domain-backed alias layer** (schema.py `__getattr__` + the 6 constant names, tools/`__init__` lazy hook + `__all__` entries — zero consumers grep-verified, `web/` is gone; one CHANGELOG "Removed" line, no deprecation cycle) | ✅ 2026-06-12 — shipped in v2.8.0 (alias layer deleted, verified by the A3 isolation apparatus; residue swept in two tiers + 3 adjacent finds; semver rationale inside the CHANGELOG Removed entry) |
 
 ---
 

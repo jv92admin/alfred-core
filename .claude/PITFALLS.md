@@ -89,6 +89,13 @@ If a lesson fails (1), it belongs in a code comment or test, not here. If it fai
 - **Fix:** Bump version + CHANGELOG in the same commit; tag from that commit only.
 - **Incidents:** — (founding invariant)
 
+### recorded-number-drift
+- **Severity:** P2 · silent-failure · source: incident
+- **Pattern:** A literal in code duplicates a number whose authoritative source lives elsewhere (package version, protocol member census) — nothing recomputes it, nothing compares it, so it silently goes stale when the source moves. In-code sibling of `doc-count-drift` (which covers the same failure in docs).
+- **Check:** `tests/core/test_version_sync.py` pins `alfred.__version__` to `importlib.metadata.version("alfredagain")`; `test_protocol_split.py`'s sort-freeze pins the member census. Any new recorded literal duplicating an authoritative number gets a pinning test in the same change.
+- **Fix:** Sync the literal, then add the test that makes the next drift a suite failure instead of a release-time archaeology find.
+- **Incidents:** 2026-06-12 · `alfred/__init__.py:__version__` → sat at `"2.4.0"` through three minor releases (2.5–2.7 never touched it); found during A4 release research; fixed by syncing to 2.8.0 + the version-sync pinning test.
+
 ---
 
 ## Adding an entry

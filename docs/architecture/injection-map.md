@@ -857,6 +857,7 @@ Quick-lookup table. Every `DomainConfig` method, which node consumes it, and whe
 | `get_act_subdomain_header()` | Act | No | Reasoning |
 | `get_archive_key_for_description()` | Act | No | Execution |
 | `get_archive_keys_for_subdomain()` | Act | No | Execution |
+| `get_audience_grades()` | Assembly seam (`register_domain` validates) | No | Execution |
 | `get_bold_skip_words()` | Reply | No | UI |
 | `get_crud_middleware()` | Act | No | Execution |
 | `get_crud_reference()` | Act | No | Reasoning |
@@ -896,7 +897,8 @@ Quick-lookup table. Every `DomainConfig` method, which node consumes it, and whe
 | `get_subdomain_registry()` | Act | **Yes** | Execution |
 | `get_summarize_system_prompts()` | Summarize | No | Reasoning |
 | `get_system_prompt()` | Reply | No | UI |
-| `get_table_format()` | Act | **Yes** | UI |
+| `get_table_format()` | — (no core consumer found; deprecation-review candidate) | **Yes** | UI |
+| `get_table_notes()` | Assembly seam (payload headers) | No | UI |
 | `get_think_domain_context()` | Think | No | Reasoning |
 | `get_think_planning_guide()` | Think | No | Reasoning |
 | `get_think_prompt_content()` | Think | No | Reasoning |

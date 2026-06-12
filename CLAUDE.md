@@ -36,7 +36,8 @@ mypy src/
 
 | File | Role |
 |------|------|
-| `src/alfred/domain/base.py` | DomainConfig protocol (75 methods) |
+| `src/alfred/domain/base.py` | DomainConfig (80 members) — composition shim over `domain/context.py` (DomainContext) + `domain/agent.py` (AgentConfig) |
+| `src/alfred/context/assembly.py` | State-free assembly entrypoints + ShapedPayload (external seam) |
 | `src/alfred/domain/__init__.py` | `register_domain()`, `get_current_domain()` |
 | `src/alfred/graph/workflow.py` | Entry points: `run_alfred()`, `run_alfred_streaming()` |
 | `src/alfred/core/id_registry.py` | SessionIdRegistry — UUID ↔ ref translation |

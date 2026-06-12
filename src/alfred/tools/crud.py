@@ -184,8 +184,8 @@ class DbCreateParams(BaseModel):
     """Parameters for db_create.
 
     Supports single record or batch create:
-    - Single: {"name": "milk", "quantity": 2}
-    - Batch: [{"name": "milk"}, {"name": "eggs"}]
+    - Single: {"name": "widget", "quantity": 2}
+    - Batch: [{"name": "widget A"}, {"name": "widget B"}]
     """
 
     table: str
@@ -455,8 +455,8 @@ async def db_create(params: DbCreateParams, user_id: str, middleware=None) -> di
     """
     Insert one or more rows into a table.
 
-    If middleware is provided, it pre-processes records (ingredient enrichment,
-    deduplication, etc.) before insertion.
+    If middleware is provided, it pre-processes records (domain-specific
+    enrichment, deduplication, etc.) before insertion.
 
     Args:
         params: Insert parameters (table, data or list of data)
