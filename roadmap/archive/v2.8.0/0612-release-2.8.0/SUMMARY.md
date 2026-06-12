@@ -59,6 +59,6 @@
 
 ## Shipped
 
-- **Version:** 2.8.0
-- **Commits:** fdc5840 (A1), 1b5b512 (A2), 6b85a63 (A3), release commit (this one)
-- **Date:** 2026-06-12 — **publish pending owner confirmation at the twine gate**
+- **Version:** 2.8.0 — published: https://pypi.org/project/alfredagain/2.8.0/
+- **Commits:** fdc5840 (A1), 1b5b512 (A2), 6b85a63 (A3), 0db524e (release); tag `v2.8.0`
+- **Date:** 2026-06-12 — owner-confirmed publish (upload first, tag push second)
